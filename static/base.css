@@ -54,11 +54,22 @@ table {
 	--clr-primary-3: #C9F0FF;
 	--clr-primary-4: #EAFFFD;
 	--clr-primary-5: #EFEFF0;
+	--clr-primary-5-1: #E0E0E1;
+
 
 	--gap-small: 20px;
 
 	--text-color-1: black;
 	font-family: "Rubik", sans-serif;
+
+	--clr-slides: #006400;
+	--clr-negatives: #bc8f8f;
+	--clr-photos: #ffd700;
+	--clr-film: #00ff00;
+	--clr-video: #00ffff;
+	--clr-data: #a020f0;
+	--clr-audio: #1e90ff;
+	--clr-other: #ff1493;
 }
 .noselect {
 	-webkit-touch-callout: none; /* iOS Safari */
@@ -73,4 +84,13 @@ h1 {
 }
 h3 {
 	font-size: 18px;
+}
+.slides {
+	background-color: var(--clr-slides);
+}
+.negatives {
+	background-color: var(--clr-negatives);
+}
+.photos {
+	background-color: var(--clr-photos);
 }

@@ -2,7 +2,7 @@
     import { onMount } from 'svelte';
     export let text = "default";
     export let iconSrc;
-    export let link = "#";
+    export let link = "";
 
     console.log(iconSrc);
 </script>
@@ -27,12 +27,15 @@
         color: var(--text-color-1);
         border-radius: 15px;
         text-decoration: none;
-        box-shadow: 0px 0px;
+
+        transition-duration: 0.3s;
     }
     .container:hover {
         background-color: var(--clr-primary-1-hover);
-        box-shadow: 2.5px 2.5px;
-        transition-duration: 0.15s;
+        box-shadow: 2px 2px;
+
+        transition-behavior: ease-out;
+        transition-duration: 0.2s;
     }
     .image-container {
         margin: auto 0px auto 15px;

@@ -1,21 +1,22 @@
 <script>
     import NavButton from "./components/NavButton.svelte";
-    import FolderImage from './components/assets/button-icons/folder_open_24dp_FILL0_wght400_GRAD0_opsz24.svg';
-    import ListImage from './components/assets/button-icons/view_list_24dp_FILL0_wght400_GRAD0_opsz24.svg';
-    import AddImage from './components/assets/button-icons/add_circle_24dp_FILL0_wght400_GRAD0_opsz24.svg';
-    import Logo from '../../static/logo.svg';
+    import FolderImage from '$lib/assets/folder_open_24dp_FILL0_wght400_GRAD0_opsz24.svg';
+    import ListImage from '$lib/assets/view_list_24dp_FILL0_wght400_GRAD0_opsz24.svg';
+    import AddImage from '$lib/assets/add_circle_24dp_FILL0_wght400_GRAD0_opsz24.svg';
+    import Logo from '$lib/assets/logo.svg';
 
-    import {PageNameStore} from './mtd-store';
+    import {PageNameStore} from './mtd-store.js';
 </script>
+
 
 <div class="page">
     <nav>
         <a class="logo-space" href="/">
-            <img src="logo.svg" alt="Alt text" />
+            <img src={Logo} alt="Alt text" />
         </a>
-        <NavButton text="My Projects" iconSrc={FolderImage}/>
-        <NavButton text="Board" iconSrc={ListImage} link="/board/"/>
-        <NavButton text="Add Project" iconSrc={AddImage}/>
+        <NavButton text="Project Board" iconSrc={ListImage} link="/board/"/>
+        <NavButton text="My Projects" iconSrc={FolderImage} link="/myprojects/"/>
+        <NavButton text="New Project" iconSrc={AddImage} link="/newproject"/>
     </nav>
     <div class="right">
         <div class="header">
@@ -36,19 +37,18 @@
         background-color: var(--clr-primary-5);
     }
 
-
     nav {
         position: fixed;
         background-color: var(--clr-primary-1);
         height: 100vh;
         width: 200px;
+        z-index: 1;
     }   
     .logo-space {
         display: flex;
         margin-bottom: 20px;
         margin: 5%;
     }
-
 
     .right {
         position: relative;
