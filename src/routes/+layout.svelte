@@ -15,7 +15,7 @@
             <img src={Logo} alt="Alt text" />
         </a>
         <NavButton text="Project Board" iconSrc={ListImage} link="/board/"/>
-        <NavButton text="My Projects" iconSrc={FolderImage} link="/myprojects/"/>
+        <NavButton text="My Projects" iconSrc={FolderImage} link="/board/myprojects/"/>
         <NavButton text="New Project" iconSrc={AddImage} link="/newproject"/>
     </nav>
     <div class="right">

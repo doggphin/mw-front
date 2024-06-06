@@ -27,15 +27,9 @@
         color: var(--text-color-1);
         border-radius: 15px;
         text-decoration: none;
-
-        transition-duration: 0.3s;
     }
     .container:hover {
         background-color: var(--clr-primary-1-hover);
-        box-shadow: 2px 2px;
-
-        transition-behavior: ease-out;
-        transition-duration: 0.2s;
     }
     .image-container {
         margin: auto 0px auto 15px;

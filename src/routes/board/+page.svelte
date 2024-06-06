@@ -1,9 +1,16 @@
 <script>
-    import {PageNameStore} from '../mtd-store.js';
+    import {PageNameStore, ProjectBoardStore, BACKENDIP} from '../mtd-store.js';
     import {onMount} from 'svelte';
 
     onMount(async() => {
         PageNameStore.set("Project Board");
+        if($ProjectBoardStore.length === 0) {
+            const endpoint = `${BACKENDIP}/projects/board/`;
+            const response = await fetch(endpoint);
+            const data = await response.json();
+            ProjectBoardStore.set(data);
+            console.log($ProjectBoardStore);
+        }
     });
 </script>
 
@@ -16,16 +23,26 @@
         <div>Status</div>
     </div>
     <div class="line-break"></div>
+    {#each $ProjectBoardStore as projectListing}
     <div class="listing">
-        <div class="listing-info">Lancaster, Brendan</div>
+        <div class="listing-info">
+            <a href="/board/{projectListing.id}">{projectListing.client_name_last}, {projectListing.client_name_first}</a>
+        </div>
         <ol class="media-container">
-            <li class="media">Slides</li>
-            <li class="media">Negatives</li>
-            <li class="media">Photos</li>
+            {#each projectListing.media_types as mediaType}
+                <li class="media">{mediaType}</li>
+            {/each}
         </ol>       
-        <div class="listing-info">6/20/24</div>
-        <div class="listing-info">Scanning in progress</div>
+        <div class="listing-info">
+            {#if projectListing.is_hard_due}
+                {projectListing.date_due_formatted}
+            {:else}
+                <p style="color:red;font-weight:bold">{projectListing.date_due_formatted}</p>
+            {/if}
+        </div>
+        <div class="listing-info">{projectListing.comments}</div>
     </div>
+    {/each}
 </div>
 
 
@@ -50,7 +67,7 @@
     .listing {
         display: grid;
         grid-template-columns: max(10rem,25%) max(10rem,25%) max(10rem,25%) max(10rem,25%);
-        padding: 5px 0px 5px 0px;
+        padding: 10px 0px 10px 10px;
     }
     .media-container {
         display: flex;
