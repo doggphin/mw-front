@@ -1,5 +1,5 @@
 <script>
-    import NavButton from "./components/NavButton.svelte";
+    import NavButton from "$lib/components/NavButton.svelte";
     import FolderImage from '$lib/assets/folder_open_24dp_FILL0_wght400_GRAD0_opsz24.svg';
     import ListImage from '$lib/assets/view_list_24dp_FILL0_wght400_GRAD0_opsz24.svg';
     import AddImage from '$lib/assets/add_circle_24dp_FILL0_wght400_GRAD0_opsz24.svg';

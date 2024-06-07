@@ -1,6 +1,7 @@
 <script>
     import {PageNameStore, ProjectBoardStore, BACKENDIP} from '../mtd-store.js';
     import {onMount} from 'svelte';
+    import ListContainer from "$lib/components/ListContainer.svelte";
 
     onMount(async() => {
         PageNameStore.set("Project Board");
@@ -15,7 +16,7 @@
 </script>
 
 
-<div class="listings-container">
+<ListContainer>
     <div class="listing">
         <div>Name</div>
         <div>Media</div>
@@ -35,15 +36,16 @@
         </ol>       
         <div class="listing-info">
             {#if projectListing.is_hard_due}
-                {projectListing.date_due_formatted}
-            {:else}
                 <p style="color:red;font-weight:bold">{projectListing.date_due_formatted}</p>
+            {:else}
+                <p>{projectListing.date_due_formatted}</p>
             {/if}
         </div>
         <div class="listing-info">{projectListing.comments}</div>
     </div>
     {/each}
-</div>
+</ListContainer>
+
 
 
 <style>
