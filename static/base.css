@@ -56,8 +56,9 @@ table {
 	--clr-primary-5: #EFEFF0;
 	--clr-primary-5-1: #E0E0E1;
 
-
 	--gap-small: 20px;
+
+	--border-size-med: 2px;
 
 	--text-color-1: black;
 	font-family: "Rubik", sans-serif;

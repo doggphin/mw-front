@@ -3,8 +3,6 @@
     export let text = "default";
     export let iconSrc;
     export let link = "";
-
-    console.log(iconSrc);
 </script>
 
 

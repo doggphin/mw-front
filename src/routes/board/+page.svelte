@@ -2,6 +2,7 @@
     import {PageNameStore, ProjectBoardStore, BACKENDIP} from '../mtd-store.js';
     import {onMount} from 'svelte';
     import ListContainer from "$lib/components/ListContainer.svelte";
+    import ListContainerLineBreak from "$lib/components/ListContainerLineBreak.svelte";
 
     onMount(async() => {
         PageNameStore.set("Project Board");
@@ -16,14 +17,14 @@
 </script>
 
 
-<ListContainer>
+<ListContainer minWidthRem=40>
     <div class="listing">
         <div>Name</div>
         <div>Media</div>
         <div>Due By</div>
         <div>Status</div>
     </div>
-    <div class="line-break"></div>
+    <ListContainerLineBreak />
     {#each $ProjectBoardStore as projectListing}
     <div class="listing">
         <div class="listing-info">
@@ -49,23 +50,6 @@
 
 
 <style>
-    .listings-container {
-        position: relative;
-        width: max(40rem, calc(100% - calc(var(--gap-small) * 2)));
-        top: var(--gap-small);
-        left: var(--gap-small);
-        background-color: white;
-
-        border-radius: calc(var(--gap-small) / 2);
-        border: 3px solid var(--clr-primary-5-1);
-        
-        margin-right: var(--gap-small);
-    }
-    .line-break {
-        width: 100%;
-        background-color: var(--clr-primary-5-1);
-        height: 3px;
-    }
     .listing {
         display: grid;
         grid-template-columns: max(10rem,25%) max(10rem,25%) max(10rem,25%) max(10rem,25%);
