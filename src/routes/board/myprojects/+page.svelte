@@ -1,8 +1,5 @@
 <script>
-    import {PageNameStore} from '../../mtd-store.js';
-    import {onMount} from 'svelte';
-
-    onMount(async() => {
-        PageNameStore.set("My Projects");
-    });
+    import SetNavName from '$lib/components/SetNavName.svelte';
 </script>
+
+<SetNavName name="My Projects"/>

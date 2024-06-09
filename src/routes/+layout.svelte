@@ -1,11 +1,11 @@
 <script>
+    import {PageNameStore} from '$lib/scripts/mtd-store.js';
+
     import NavButton from "$lib/components/NavButton.svelte";
     import FolderImage from '$lib/assets/folder_open_24dp_FILL0_wght400_GRAD0_opsz24.svg';
     import ListImage from '$lib/assets/view_list_24dp_FILL0_wght400_GRAD0_opsz24.svg';
     import AddImage from '$lib/assets/add_circle_24dp_FILL0_wght400_GRAD0_opsz24.svg';
     import Logo from '$lib/assets/logo.svg';
-
-    import {PageNameStore} from './mtd-store.js';
 </script>
 
 
@@ -42,7 +42,7 @@
         background-color: var(--clr-primary-1);
         height: 100vh;
         width: 200px;
-        z-index: 1;
+        z-index: 72;
     }   
     .logo-space {
         display: flex;
@@ -64,7 +64,7 @@
         position: fixed;
         background-color: white;
         height: 75px;
-        z-index: 1;
+        z-index: 72;
 
         display: flex;
     }

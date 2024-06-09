@@ -1,24 +1,75 @@
 <script>
+    import { CurrentMainTab } from '$lib/scripts/mtd-store.js';
+
     export let minWidthRem = 40;
+    export let tabs;
+
+    function setTab(tabName) {
+        console.log(tabName["tab"]);
+        CurrentMainTab.set(tabName["tab"]);
+    }
 </script>
 
+<!-- Hacky workaround to make the page have a 20px border on the right-->
+<div style="width:calc({minWidthRem}rem + calc(var(--gap-listcontainer) * 2)); height: 0.01px; background-color: green; opacity: 0%"></div>
 
-<div class="list-container" style="width: max({minWidthRem}em, calc(100% - calc(var(--gap-small) * 2)));">
+{#if tabs && tabs.length > 0}
+    <ol style="--minWidthRem: {minWidthRem}rem;" class="container-spacer tab-bar">
+        <li class="tabs-indent"/>
+        {#each tabs as tab}
+            <li class="tab" style="{tab == $CurrentMainTab ? "border-bottom-width: 0px;" : "background-color: var(--clr-primary-5-1);"}">
+                <button on:click={ setTab({tab}) }> {tab} </button>
+            </li>
+        {/each}
+    </ol>
+{/if}
+<div style="--minWidthRem: {minWidthRem}rem; top: {tabs && $CurrentMainTab  ? "0px" : "var(--gap-listcontainer)"};" class="container-spacer list-container">
     <slot>
         No content found!
     </slot>
 </div>
 
+
 <style>
-.list-container {
+    .container-spacer {
         position: relative;
-        top: var(--gap-small);
-        left: var(--gap-small);
+        left: var(--gap-listcontainer);
+        width: max(calc(100% - calc(var(--gap-listcontainer) * 2)), var(--minWidthRem));
+
+    }
+    .list-container {
         background-color: white;
 
-        border-radius: calc(var(--gap-small) / 2);
+        border-radius: calc(var(--gap-listcontainer) / 2);
         border: var(--border-size-med) solid var(--clr-primary-5-1);
         
         /*margin-right: var(--gap-small);*/
+    }
+    .tab-bar {
+        display: flex;
+        margin-top: var(--gap-listcontainer);
+        margin-bottom: calc(var(--border-size-med) * -1);
+        z-index: 1;
+    }
+    .tabs-indent {
+        width: 20px;
+    }
+    .tab {
+        text-align: center;
+        padding: 5px 10px 5px 10px;
+        margin: 0px 1px 0px 1px;
+        border-radius: 8px 8px 0px 0px;
+        border: var(--border-size-med) solid var(--clr-primary-5-1);
+        background-color: white;
+    }
+    /* https://stackoverflow.com/a/45890842 */
+    button {
+        background: none;
+        color: inherit;
+        border: none;
+        padding: 0;
+        font: inherit;
+        cursor: pointer;
+        outline: inherit;
     }
 </style>

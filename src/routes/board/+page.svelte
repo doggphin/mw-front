@@ -1,5 +1,5 @@
 <script>
-    import {PageNameStore, ProjectBoardStore, BACKENDIP} from '../mtd-store.js';
+    import {PageNameStore, ProjectBoardStore, BACKENDIP} from '$lib/scripts/mtd-store.js';
     import {onMount} from 'svelte';
     import ListContainer from "$lib/components/ListContainer.svelte";
     import ListContainerLineBreak from "$lib/components/ListContainerLineBreak.svelte";
@@ -11,7 +11,6 @@
             const response = await fetch(endpoint);
             const data = await response.json();
             ProjectBoardStore.set(data);
-            console.log($ProjectBoardStore);
         }
     });
 </script>

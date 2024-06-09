@@ -1,5 +1,4 @@
 <script>
-    import { onMount } from 'svelte';
     export let text = "default";
     export let iconSrc;
     export let link = "";
