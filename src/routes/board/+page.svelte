@@ -35,11 +35,9 @@
             {/each}
         </ol>       
         <div class="listing-info">
-            {#if projectListing.is_hard_due}
-                <p style="color:red;font-weight:bold">{projectListing.date_due_formatted}</p>
-            {:else}
-                <p>{projectListing.date_due_formatted}</p>
-            {/if}
+            <p title="Taken in on {projectListing.date_in_formatted}" style="{projectListing.is_hard_due ? "color:red;font-weight:bold" : ""}">
+                <u>{projectListing.date_due_formatted}</u>
+            </p>
         </div>
         <div class="listing-info">{projectListing.comments}</div>
     </div>
@@ -67,5 +65,9 @@
     }
     .listing-info {
         margin: auto 0px auto 0px;
+    }
+    u {
+        border-bottom: 1px dotted #000;
+        text-decoration: none;
     }
 </style>

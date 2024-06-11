@@ -2,7 +2,7 @@
     import { CurrentMainTab } from '$lib/scripts/mtd-store.js';
 
     export let minWidthRem = 40;
-    export let tabs;
+    export let tabs = [];
 
     function setTab(tabName) {
         console.log(tabName["tab"]);
@@ -13,7 +13,7 @@
 <!-- Hacky workaround to make the page have a 20px border on the right-->
 <div style="width:calc({minWidthRem}rem + calc(var(--gap-listcontainer) * 2)); height: 0.01px; background-color: green; opacity: 0%"></div>
 
-{#if tabs && tabs.length > 0}
+{#if tabs.length}
     <ol style="--minWidthRem: {minWidthRem}rem;" class="container-spacer tab-bar">
         <li class="tabs-indent"/>
         {#each tabs as tab}
@@ -23,7 +23,7 @@
         {/each}
     </ol>
 {/if}
-<div style="--minWidthRem: {minWidthRem}rem; top: {tabs && $CurrentMainTab  ? "0px" : "var(--gap-listcontainer)"};" class="container-spacer list-container">
+<div style="--minWidthRem: {minWidthRem}rem; top: {tabs.length && $CurrentMainTab  ? "0px" : "var(--gap-listcontainer)"};" class="container-spacer list-container">
     <slot>
         No content found!
     </slot>
