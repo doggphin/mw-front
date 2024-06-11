@@ -17,6 +17,15 @@
     let error = 0;
 
     let tabsCache = [];
+    let slidesDefaultDpi = 1250;
+    let slidesDefaultCorrect = "N"
+    let printsDefaultDpi = 1250;
+    let printsDefaultCorrect = "N"
+    let negativesDefaultDpi = 3000;
+    let negativesDefaultCorrect = "N"
+    function boolToString(boolean) {
+        return boolean ? "Y" : "N";
+    }
     onMount(async function() {
         PageNameStore.set("");
         CurrentMainTab.set();
@@ -30,12 +39,18 @@
             
             if(data.hasOwnProperty("slides_job")) {
                 tabsCache.push('Slides');
+                slidesDefaultDpi = data['slides_job']['default_dpi'];
+                slidesDefaultCorrect = boolToString(data['slides_job']['default_dpi'])
             };
             if(data.hasOwnProperty("prints_job")) {
                 tabsCache.push('Prints');
+                printsDefaultDpi = data['prints_job']['default_dpi'];
+                printsDefaultCorrect = boolToString(data['prints_job']['default_dpi'])
             };
             if(data.hasOwnProperty("negatives_job")) {
                 tabsCache.push('Negatives');
+                negativesDefaultDpi = data['negatives_job']['default_dpi'];
+                negativesDefaultCorrect = boolToString(['negatives_job']['default_dpi'])
             };
 
             if(tabsCache.length > 0) {
@@ -79,14 +94,14 @@
                 <li> Folder Name </li>
             </ol>
             <ListContainerLineBreak />
-            {#each $ProjectDetailStore["slides_job"]["groups"] as group}
+            {#each Object.entries($ProjectDetailStore["slides_job"]["groups"]) as [index, data]}
                 <div class="slides-group">
-                    <div>{group["index"]}</div>
-                    <div>{group["dpi"]}</div>
-                    <div>{group["is_to_be_corrected"] === true ? "Y": "N"}</div>
-                    <input on:input={(text) => enforceNumericInput(text)} placeholder={group["intake_scanner_count"]}>
-                    <input on:input={(text) => enforceNumericInput(text)} placeholder={group["intake_hs_count"]}>
-                    <input placeholder={group["name_folder"]}>
+                    <div>{index}</div>
+                    <div>{"dpi" in data ? data["dpi"] : slidesDefaultDpi}</div>
+                    <div>{"correct" in data ? boolToString(data["correct"]) : slidesDefaultCorrect}</div>
+                    <input on:input={(text) => enforceNumericInput(text)} placeholder={data["intake_scanner_count"] ?? 0}>
+                    <input on:input={(text) => enforceNumericInput(text)} placeholder={data["intake_hs_count"] ?? 0}>
+                    <input placeholder={data["name_folder"] ?? ""}>
                 </div>
             {/each}
 
@@ -101,16 +116,16 @@
                 <li> Folder Name </li>
             </ol>
             <ListContainerLineBreak />
-            {#each $ProjectDetailStore["prints_job"]["groups"] as group}
-                <ol class="prints-group">
-                    <li>{group["index"]}</li>
-                    <li>{group["dpi"]}</li>
-                    <li>{group["is_to_be_corrected"] === true ? "Y": "N"}</li>
-                    <input on:input={(text) => enforceNumericInput(text)} style="width:80%;" placeholder={group["intake_lp_count"]}>
-                    <input on:input={(text) => enforceNumericInput(text)} style="width:80%;" placeholder={group["intake_hs_count"]}>
-                    <input on:input={(text) => enforceNumericInput(text)} style="width:80%;" placeholder={group["intake_oshs_count"]}>
-                    <input placeholder={group["name_folder"]}>
-                </ol>
+            {#each Object.entries($ProjectDetailStore["prints_job"]["groups"]) as [index, data]}
+                <div class="prints-group">
+                    <div>{index}</div>
+                    <div>{"dpi" in data ? data["dpi"] : printsDefaultDpi}</div>
+                    <div>{"correct" in data ? boolToString(data["correct"]) : printsDefaultCorrect}</div>
+                    <input on:input={(text) => enforceNumericInput(text)} placeholder={data["intake_lp_count"] ?? 0}>
+                    <input on:input={(text) => enforceNumericInput(text)} placeholder={data["intake_hs_count"] ?? 0}>
+                    <input on:input={(text) => enforceNumericInput(text)} placeholder={data["intake_oshs_count"] ?? 0}>
+                    <input placeholder={data["name_folder"] ?? ""}>
+                </div>
             {/each}
 
         {:else if $CurrentMainTab == "Negatives"}
@@ -124,16 +139,16 @@
                 <li> Folder Name </li>
             </ol>
             <ListContainerLineBreak />
-            {#each $ProjectDetailStore["prints_job"]["groups"] as group}
-                <ol class="negatives-group">
-                    <li>{group["index"]}</li>
-                    <li>{group["dpi"]}</li>
-                    <li>{group["is_to_be_corrected"] === true ? "Y": "N"}</li>
-                    <input on:input={(text) => enforceNumericInput(text)} style="width:80%;" placeholder={group["intake_strip_count"]}>
-                    <input on:input={(text) => enforceNumericInput(text)} style="width:80%;" placeholder={group["intake_hs_count"]}>
-                    <input on:input={(text) => enforceNumericInput(text)} style="width:80%;" placeholder={group["intake_images_count"]}>
-                    <input placeholder={group["name_folder"]}>
-                </ol>
+            {#each Object.entries($ProjectDetailStore["negatives_job"]["groups"]) as [index, data]}
+                <div class="negatives-group">
+                    <div>{index}</div>
+                    <div>{"dpi" in data ? data["dpi"] : negativesDefaultDpi}</div>
+                    <div>{"correct" in data ? boolToString(data["correct"]) : negativesDefaultCorrect}</div>
+                    <input on:input={(text) => enforceNumericInput(text)} placeholder={data["intake_strip_count"] ?? 0}>
+                    <input on:input={(text) => enforceNumericInput(text)} placeholder={data["intake_hs_count"] ?? 0}>
+                    <input on:input={(text) => enforceNumericInput(text)} placeholder={data["intake_images_count"] ?? 0}>
+                    <input placeholder={data["name_folder"] ?? ""}>
+                </div>
             {/each}
 
         {/if}
