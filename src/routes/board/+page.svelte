@@ -8,7 +8,7 @@
         PageNameStore.set("Project Board");
         if($ProjectBoardStore.length === 0) {
             const endpoint = `${BACKENDIP}/projects/board/`;
-            const response = await fetch(endpoint);
+            const response = await fetch(endpoint, {method: "GET"});
             const data = await response.json();
             ProjectBoardStore.set(data);
         }
@@ -43,7 +43,6 @@
     </div>
     {/each}
 </ListContainer>
-
 
 
 <style>

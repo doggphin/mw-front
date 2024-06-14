@@ -10,3 +10,7 @@ export function enforceNumericInput(input) {
         }
     }
 }
+
+export function boolToString(boolean) {
+    return boolean ? "Y" : "N";
+}

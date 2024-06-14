@@ -1,57 +1,50 @@
 <script>
-    let isNumberKey = (evt) => {
-        var charCode = (evt.which) ? evt.which : evt.keyCode
-        if (charCode > 31 && (charCode < 48 || charCode > 57))
-            return false;
-        return true;
-    }
-    
     import { onMount } from 'svelte';
-    import { PageNameStore, ProjectDetailStore, CurrentMainTab, BACKENDIP } from '$lib/scripts/mtd-store.js';
-    import { enforceNumericInput } from '$lib/scripts/helpers.js'
+    import { PageNameStore, CurrentMainTab, BACKENDIP } from '$lib/scripts/mtd-store.js';
+    import { boolToString, enforceNumericInput } from '$lib/scripts/helpers.js'
     import ListContainer from '$lib/components/ListContainer.svelte'
     import ListContainerLineBreak from '$lib/components/ListContainerLineBreak.svelte'
 
     export let data;
-    let project = null;
-    let error = 0;
 
+    let error = 0;
     let tabsCache = [];
-    let slidesDefaultDpi = 1250;
-    let slidesDefaultCorrect = "N"
-    let printsDefaultDpi = 1250;
-    let printsDefaultCorrect = "N"
-    let negativesDefaultDpi = 3000;
-    let negativesDefaultCorrect = "N"
-    function boolToString(boolean) {
-        return boolean ? "Y" : "N";
-    }
+    let defaults = {
+        slidesDpi : 1250,
+        slidesCorrect : "N",
+
+        printsDpi : 1250,
+        printsCorrect : "N",
+
+        negativesDpi : 3000,
+        negativesCorrect : "N"
+    };
+
+    let project = {};
     onMount(async function() {
         PageNameStore.set("");
         CurrentMainTab.set();
         const endpoint = `${BACKENDIP}/projects/${data.id}`;
-        const response = await fetch(endpoint);
+        const response = await fetch(endpoint, {method: "GET"});
         if(response.status == 200) {
-            const data = await response.json();
-            ProjectDetailStore.set(data);
-            project = data;
-            PageNameStore.set(data["client_name_last"] + ", " + data["client_name_first"])
+            project = await response.json();
+            PageNameStore.set(data["client_name_last"] + ", " + project["client_name_first"])
             
-            if(data.hasOwnProperty("slides_job")) {
+            if(project.hasOwnProperty("slides_job")) {
                 tabsCache.push('Slides');
-                slidesDefaultDpi = data['slides_job']['default_dpi'];
-                slidesDefaultCorrect = boolToString(data['slides_job']['default_dpi'])
-            };
-            if(data.hasOwnProperty("prints_job")) {
+                defaults.slidesDpi = project['slides_job']['default_dpi'];
+                defaults.slidesCorrect = boolToString(project['slides_job']['default_dpi'])
+            }
+            if(project.hasOwnProperty("prints_job")) {
                 tabsCache.push('Prints');
-                printsDefaultDpi = data['prints_job']['default_dpi'];
-                printsDefaultCorrect = boolToString(data['prints_job']['default_dpi'])
-            };
-            if(data.hasOwnProperty("negatives_job")) {
+                defaults.printsDpi = data['prints_job']['default_dpi'];
+                defaults.printsCorrect = boolToString(project['prints_job']['default_dpi'])
+            }
+            if(project.hasOwnProperty("negatives_job")) {
                 tabsCache.push('Negatives');
-                negativesDefaultDpi = data['negatives_job']['default_dpi'];
-                negativesDefaultCorrect = boolToString(['negatives_job']['default_dpi'])
-            };
+                defaults.negativesDpi = project['negatives_job']['default_dpi'];
+                defaults.negativesCorrect = boolToString(['negatives_job']['default_dpi'])
+            }
 
             if(tabsCache.length > 0) {
                 CurrentMainTab.set(tabsCache[0]);
@@ -60,7 +53,51 @@
             PageNameStore.set("Error")
             error = 1;
         }
-    })
+    });
+
+    $: slidesGroups = project.hasOwnProperty("slides_job") ? project["slides_job"]["groups"] : null
+
+    ///
+
+    const roomSocket = new WebSocket(`ws://localhost:8000/ws/project/${data.id}/`);
+
+    window.onbeforeunload = function() {
+        roomSocket.onclose = function () {}; // disable onclose handler first
+        roomSocket.close();
+    };
+
+    roomSocket.onmessage = function(event) {
+        const msg = (JSON.parse(event.data))['message'];
+        switch(msg['job']) {
+            case 'Slides':
+                // Since the reactive group elements need to be set directly, I don't think there's any way to simplify this..?
+                slidesGroups[msg['idx']][msg['col']] = msg['val'];
+                break;
+            default:
+                console.log("No job recognized!");
+                return;
+        }
+    };
+
+    roomSocket.onclose = function(e) {
+        console.log('Websocket connection closed!');
+    };
+
+    roomSocket.onopen = function(e) {
+        console.log("Websocket connection opened!");
+    };
+
+    function sendUpdate(idx, col, val) {
+        let ret = {
+            'job' : $CurrentMainTab,
+            'idx' : idx,
+            'col' : col,
+            'val' : val.target.value
+        }
+        roomSocket.send(JSON.stringify(ret));
+    }
+
+    ///
 
     let listContainerWidth = 0;
     $: $CurrentMainTab, updateContainerWidth();
@@ -78,13 +115,13 @@
             default:
                 break;
         }
-    }
-
+    };
 </script>
+
 
 <ListContainer minWidthRem={listContainerWidth} tabs={tabsCache}>
     {#if project}
-        {#if $CurrentMainTab == "Slides"}
+        {#if $CurrentMainTab == "Slides" && slidesGroups}
             <ol class="slides-group">
                 <li> # </li>
                 <li> DPI </li>
@@ -94,14 +131,24 @@
                 <li> Folder Name </li>
             </ol>
             <ListContainerLineBreak />
-            {#each Object.entries($ProjectDetailStore["slides_job"]["groups"]) as [index, data]}
+            {#each Object.entries(slidesGroups) as [idx, groupData]}
                 <div class="slides-group">
-                    <div>{index}</div>
-                    <div>{"dpi" in data ? data["dpi"] : slidesDefaultDpi}</div>
-                    <div>{"correct" in data ? boolToString(data["correct"]) : slidesDefaultCorrect}</div>
-                    <input on:input={(text) => enforceNumericInput(text)} placeholder={data["intake_scanner_count"] ?? 0}>
-                    <input on:input={(text) => enforceNumericInput(text)} placeholder={data["intake_hs_count"] ?? 0}>
-                    <input placeholder={data["name_folder"] ?? ""}>
+                    <div>{idx}</div>
+                    <div>{"dpi" in groupData ? groupData["dpi"] : defaults.slidesDpi}</div>
+                    <div>{"correct" in groupData ? boolToString(groupData["correct"]) : defaults.slidesCorrect}</div>
+                    <input 
+                        on:change={(val) => sendUpdate(idx, "final_scanner_count", val)} 
+                        on:input={(text) => enforceNumericInput(text)} 
+                        placeholder={groupData["intake_scanner_count"] ?? 0}
+                        value={groupData["final_scanner_count"] ?? ""}
+                    >
+                    <input
+                        on:change={(val) => sendUpdate(idx, "final_hs_count", val)} 
+                        on:input={(text) => enforceNumericInput(text)} 
+                        placeholder={groupData["intake_hs_count"] ?? 0}
+                        value={groupData["final_hs_count"] ?? ""}
+                    >
+                    <input placeholder={groupData["name_folder"] ?? ""}>
                 </div>
             {/each}
 
@@ -116,15 +163,15 @@
                 <li> Folder Name </li>
             </ol>
             <ListContainerLineBreak />
-            {#each Object.entries($ProjectDetailStore["prints_job"]["groups"]) as [index, data]}
+            {#each Object.entries(project["prints_job"]["groups"]) as [index, groupData]}
                 <div class="prints-group">
                     <div>{index}</div>
-                    <div>{"dpi" in data ? data["dpi"] : printsDefaultDpi}</div>
-                    <div>{"correct" in data ? boolToString(data["correct"]) : printsDefaultCorrect}</div>
-                    <input on:input={(text) => enforceNumericInput(text)} placeholder={data["intake_lp_count"] ?? 0}>
-                    <input on:input={(text) => enforceNumericInput(text)} placeholder={data["intake_hs_count"] ?? 0}>
-                    <input on:input={(text) => enforceNumericInput(text)} placeholder={data["intake_oshs_count"] ?? 0}>
-                    <input placeholder={data["name_folder"] ?? ""}>
+                    <div>{"dpi" in groupData ? groupData["dpi"] : defaults.printsDpi}</div>
+                    <div>{"correct" in groupData ? boolToString(groupData["correct"]) : defaults.printsCorrect}</div>
+                    <input on:input={(text) => enforceNumericInput(text)} placeholder={groupData["intake_lp_count"] ?? 0}>
+                    <input on:input={(text) => enforceNumericInput(text)} placeholder={groupData["intake_hs_count"] ?? 0}>
+                    <input on:input={(text) => enforceNumericInput(text)} placeholder={groupData["intake_oshs_count"] ?? 0}>
+                    <input placeholder={groupData["name_folder"] ?? ""}>
                 </div>
             {/each}
 
@@ -139,15 +186,15 @@
                 <li> Folder Name </li>
             </ol>
             <ListContainerLineBreak />
-            {#each Object.entries($ProjectDetailStore["negatives_job"]["groups"]) as [index, data]}
+            {#each Object.entries(project["negatives_job"]["groups"]) as [index, groupData]}
                 <div class="negatives-group">
                     <div>{index}</div>
-                    <div>{"dpi" in data ? data["dpi"] : negativesDefaultDpi}</div>
-                    <div>{"correct" in data ? boolToString(data["correct"]) : negativesDefaultCorrect}</div>
-                    <input on:input={(text) => enforceNumericInput(text)} placeholder={data["intake_strip_count"] ?? 0}>
-                    <input on:input={(text) => enforceNumericInput(text)} placeholder={data["intake_hs_count"] ?? 0}>
-                    <input on:input={(text) => enforceNumericInput(text)} placeholder={data["intake_images_count"] ?? 0}>
-                    <input placeholder={data["name_folder"] ?? ""}>
+                    <div>{"dpi" in groupData ? groupData["dpi"] : defaults.negativesDpi}</div>
+                    <div>{"correct" in groupData ? boolToString(groupData["correct"]) : defaults.negativesCorrect}</div>
+                    <input on:input={(text) => enforceNumericInput(text)} placeholder={groupData["intake_strip_count"] ?? 0}>
+                    <input on:input={(text) => enforceNumericInput(text)} placeholder={groupData["intake_hs_count"] ?? 0}>
+                    <input on:input={(text) => enforceNumericInput(text)} placeholder={groupData["intake_images_count"] ?? 0}>
+                    <input placeholder={groupData["name_folder"] ?? ""}>
                 </div>
             {/each}
 
@@ -161,9 +208,11 @@
     {/if}
 </ListContainer>
 
-<!-- https://stackoverflow.com/questions/23794713/how-can-i-have-two-fixed-width-columns-with-one-flexible-column-in-the-center -->
-<!-- LOOK AT THIS STUFF ^ -->
+
+
 <style>
+    /* https://stackoverflow.com/questions/23794713/how-can-i-have-two-fixed-width-columns-with-one-flexible-column-in-the-center
+       LOOK AT THIS STUFF */
     .slides-group {
         display: grid;
         grid-template-columns: max(3rem,11.76%) max(3rem,11.76%) max(2.5rem,9.80%) max(4rem,15.68%) max(3rem,11.76%) max(10rem,39.21%);
