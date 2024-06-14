@@ -18,6 +18,10 @@
         negativesCorrect : "N"
     };
 
+    $: slidesGroups = project?.["slides_job"]?.["groups"];
+    $: printsGroups = project?.["prints_job"]?.["groups"];
+    $: negativesGroups = project?.["negatives_job"]?.["groups"];
+
     let project = {};
     onMount(async function() {
         PageNameStore.set("");
@@ -26,8 +30,8 @@
         const response = await fetch(endpoint, {method: "GET"});
         if(response.status == 200) {
             project = await response.json();
-            PageNameStore.set(data["client_name_last"] + ", " + project["client_name_first"])
-            
+            PageNameStore.set(project["client_name_last"] + ", " + project["client_name_first"])
+
             if(project.hasOwnProperty("slides_job")) {
                 tabsCache.push('Slides');
                 defaults.slidesDpi = project['slides_job']['default_dpi'];
@@ -53,33 +57,17 @@
         }
     });
 
-    $: slidesGroups = project.hasOwnProperty("slides_job") ? project["slides_job"]["groups"] : null
-
     ///
+
     import { onDestroy } from 'svelte'
 
     const roomSocket = new WebSocket(`ws://localhost:8000/ws/project/${data.id}/`);
-    let hasLoaded = false;
-    onDestroy( () => {
-        if(roomSocket && hasLoaded) {
+    // Close websocket when going to another page
+    onDestroy(() => {
+        if(roomSocket.readyState === 1) {
             roomSocket.close();
         }
     })
-    
-
-    roomSocket.onmessage = function(event) {
-        const msg = (JSON.parse(event.data))['message'];
-        switch(msg['job']) {
-            // Reactive group elements need to be set directly, pretty sure there isn't a way to clean this up
-            case 'Slides':
-                
-                slidesGroups[msg['idx']][msg['col']] = msg['val'];
-                break;
-            default:
-                console.log("No job recognized!");
-                return;
-        }
-    };
 
     roomSocket.onclose = function(e) {
         console.log('Websocket connection closed!');
@@ -87,17 +75,40 @@
 
     roomSocket.onopen = function(e) {
         console.log("Websocket connection opened!");
-        hasLoaded = true;
+    };
+
+    roomSocket.onmessage = function(event) {
+        try {
+            const msg = (JSON.parse(event.data))['message'];
+            switch(msg['job']) {
+                // Reactive group elements need to be set directly, I don't think there's a way to clean this up
+                case 'slides_job':
+                    slidesGroups[msg['idx']][msg['col']] = msg['val'];
+                    break;
+                case 'prints_job':
+                    printsGroups[msg['idx']][msg['col']] = msg['val'];
+                    break;
+                case 'negatives_job':
+                    console.log("negatives received!");
+                    negativesGroups[msg['idx']][msg['col']] = msg['val'];
+                    break;
+                default:
+                    return;
+            }
+        } catch(Error) {
+            error("Error reading websocket message.");
+        }
     };
 
     function sendUpdate(idx, col, val) {
-        let ret = {
+        console.log("Sending a message!");
+        let msg = {
             'job' : $CurrentMainTab,
             'idx' : idx,
             'col' : col,
             'val' : val.target.value
         }
-        roomSocket.send(JSON.stringify(ret));
+        roomSocket.send(JSON.stringify(msg));
     }
 
     ///
@@ -131,7 +142,7 @@
                 <li> Corr. </li>
                 <li> Normal </li>
                 <li> HS </li>
-                <li> Folder Name </li>
+                <li> Comments </li>
             </ol>
             <ListContainerLineBreak />
             {#each Object.entries(slidesGroups) as [idx, groupData]}
@@ -151,7 +162,11 @@
                         placeholder={groupData["intake_hs_count"] ?? 0}
                         value={groupData["final_hs_count"] ?? ""}
                     >
-                    <input placeholder={groupData["name_folder"] ?? ""}>
+                    <input 
+                        on:change={(text) => sendUpdate(idx, "comments", text)}
+                        placeholder={groupData["comments"] ?? ""}
+                        value={groupData["comments"] ?? ""}
+                    >
                 </div>
             {/each}
 
@@ -163,18 +178,36 @@
                 <li> LP </li>
                 <li> HS </li>
                 <li> OSHS </li>
-                <li> Folder Name </li>
+                <li> Comments </li>
             </ol>
             <ListContainerLineBreak />
-            {#each Object.entries(project["prints_job"]["groups"]) as [index, groupData]}
+            {#each Object.entries(printsGroups) as [idx, groupData]}
                 <div class="prints-group">
-                    <div>{index}</div>
+                    <div>{idx}</div>
                     <div>{"dpi" in groupData ? groupData["dpi"] : defaults.printsDpi}</div>
                     <div>{"correct" in groupData ? boolToString(groupData["correct"]) : defaults.printsCorrect}</div>
-                    <input on:input={(text) => enforceNumericInput(text)} placeholder={groupData["intake_lp_count"] ?? 0}>
-                    <input on:input={(text) => enforceNumericInput(text)} placeholder={groupData["intake_hs_count"] ?? 0}>
-                    <input on:input={(text) => enforceNumericInput(text)} placeholder={groupData["intake_oshs_count"] ?? 0}>
-                    <input placeholder={groupData["name_folder"] ?? ""}>
+                    <input 
+                        on:input={(text) => enforceNumericInput(text)} 
+                        placeholder={groupData["intake_lp_count"] ?? 0}
+                        on:change={(val) => sendUpdate(idx, "final_lp_count", val)}
+                        value={groupData["final_lp_count"] ?? ""}
+                    >
+                    <input 
+                        on:input={(text) => enforceNumericInput(text)} 
+                        placeholder={groupData["intake_hs_count"] ?? 0}
+                        on:change={(val) => sendUpdate(idx, "final_hs_count", val)}
+                        value={groupData["final_hs_count"] ?? ""}
+                    >
+                    <input
+                        on:input={(text) => enforceNumericInput(text)}
+                        placeholder={groupData["intake_oshs_count"] ?? 0}
+                        on:change={(val) => sendUpdate(idx, "final_oshs_count", val)}
+                        value={groupData["final_oshs_count"] ?? ""}
+                    >
+                    <input 
+                        on:change={(val) => sendUpdate(idx, "comments", val)}
+                        value={groupData["comments"] ?? ""}
+                    >
                 </div>
             {/each}
 
@@ -186,18 +219,36 @@
                 <li> Strips </li>
                 <li> HS </li>
                 <li> # Images </li>
-                <li> Folder Name </li>
+                <li> Comments </li>
             </ol>
             <ListContainerLineBreak />
-            {#each Object.entries(project["negatives_job"]["groups"]) as [index, groupData]}
+            {#each Object.entries(negativesGroups) as [idx, groupData]}
                 <div class="negatives-group">
-                    <div>{index}</div>
+                    <div>{idx}</div>
                     <div>{"dpi" in groupData ? groupData["dpi"] : defaults.negativesDpi}</div>
                     <div>{"correct" in groupData ? boolToString(groupData["correct"]) : defaults.negativesCorrect}</div>
-                    <input on:input={(text) => enforceNumericInput(text)} placeholder={groupData["intake_strip_count"] ?? 0}>
-                    <input on:input={(text) => enforceNumericInput(text)} placeholder={groupData["intake_hs_count"] ?? 0}>
-                    <input on:input={(text) => enforceNumericInput(text)} placeholder={groupData["intake_images_count"] ?? 0}>
-                    <input placeholder={groupData["name_folder"] ?? ""}>
+                    <input 
+                        on:input={(text) => enforceNumericInput(text)} 
+                        placeholder={groupData["intake_strip_count"] ?? 0}
+                        on:change={(val) => sendUpdate(idx, "final_strip_count", val)}
+                        value={groupData["final_strip_count"] ?? ""}
+                    >
+                    <input 
+                        on:input={(text) => enforceNumericInput(text)} 
+                        placeholder={groupData["intake_hs_count"] ?? 0}
+                        on:change={(val) => sendUpdate(idx, "final_hs_count", val)}
+                        value={groupData["final_hs_count"] ?? ""}
+                    >
+                    <input
+                        on:input={(text) => enforceNumericInput(text)}
+                        placeholder={groupData["intake_images_count"] ?? 0}
+                        on:change={(val) => sendUpdate(idx, "final_images_count", val)}
+                        value={groupData["final_images_count"] ?? ""}
+                    >
+                    <input 
+                        on:change={(val) => sendUpdate(idx, "comments", val)}
+                        value={groupData["comments"] ?? ""}
+                    >
                 </div>
             {/each}
 
