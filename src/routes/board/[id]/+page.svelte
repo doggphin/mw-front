@@ -1,9 +1,9 @@
 <script>
     import { onMount } from 'svelte';
     import { PageNameStore, CurrentMainTab, BACKENDIP } from '$lib/scripts/mtd-store.js';
-    import { boolToString, enforceNumericInput } from '$lib/scripts/helpers.js'
-    import ListContainer from '$lib/components/ListContainer.svelte'
-    import ListContainerLineBreak from '$lib/components/ListContainerLineBreak.svelte'
+    import { boolToString, enforceNumericInput } from '$lib/scripts/helpers.js';
+    import ListContainer from '$lib/components/ListContainer.svelte';
+    import ListContainerLineBreak from '$lib/components/ListContainerLineBreak.svelte';
 
     export let data;
 
@@ -12,10 +12,8 @@
     let defaults = {
         slidesDpi : 1250,
         slidesCorrect : "N",
-
         printsDpi : 1250,
         printsCorrect : "N",
-
         negativesDpi : 3000,
         negativesCorrect : "N"
     };
@@ -37,7 +35,7 @@
             }
             if(project.hasOwnProperty("prints_job")) {
                 tabsCache.push('Prints');
-                defaults.printsDpi = data['prints_job']['default_dpi'];
+                defaults.printsDpi = project['prints_job']['default_dpi'];
                 defaults.printsCorrect = boolToString(project['prints_job']['default_dpi'])
             }
             if(project.hasOwnProperty("negatives_job")) {
@@ -58,19 +56,23 @@
     $: slidesGroups = project.hasOwnProperty("slides_job") ? project["slides_job"]["groups"] : null
 
     ///
+    import { onDestroy } from 'svelte'
 
     const roomSocket = new WebSocket(`ws://localhost:8000/ws/project/${data.id}/`);
-
-    window.onbeforeunload = function() {
-        roomSocket.onclose = function () {}; // disable onclose handler first
-        roomSocket.close();
-    };
+    let hasLoaded = false;
+    onDestroy( () => {
+        if(roomSocket && hasLoaded) {
+            roomSocket.close();
+        }
+    })
+    
 
     roomSocket.onmessage = function(event) {
         const msg = (JSON.parse(event.data))['message'];
         switch(msg['job']) {
+            // Reactive group elements need to be set directly, pretty sure there isn't a way to clean this up
             case 'Slides':
-                // Since the reactive group elements need to be set directly, I don't think there's any way to simplify this..?
+                
                 slidesGroups[msg['idx']][msg['col']] = msg['val'];
                 break;
             default:
@@ -85,6 +87,7 @@
 
     roomSocket.onopen = function(e) {
         console.log("Websocket connection opened!");
+        hasLoaded = true;
     };
 
     function sendUpdate(idx, col, val) {
@@ -201,7 +204,7 @@
         {/if}
     {:else}
         {#if error}
-            <p class="temp-message"> 404 Error: No project found with ID {data.id}!</p>
+            <p class="temp-message"> TestNo project found with ID {data.id}.</p>
         {:else}
             <p class="temp-message"> Loading... </p>
         {/if}
