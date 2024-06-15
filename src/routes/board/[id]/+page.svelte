@@ -93,7 +93,6 @@
                     printsGroups[msg['idx']][msg['col']] = msg['val'];
                     break;
                 case 'negatives_job':
-                    console.log("negatives received!");
                     negativesGroups[msg['idx']][msg['col']] = msg['val'];
                     break;
                 default:
@@ -125,26 +124,22 @@
         comments: 10,
 
         get slides() {
-            return [
-                this.index, this.dpi,   this.corr,  this.count, this.count, this.comments
-            ];
+            return [this.index, this.dpi,   this.corr,  this.count, this.count, this.comments];
         },
         get prints() {
-            return [
-                this.index, this.dpi,   this.corr,  this.count, this.count, this.count, this.comments
-            ];
+            return [this.index, this.dpi,   this.corr,  this.count, this.count, this.count, this.comments];
         },
         get negatives() {
-            return [
-                this.index, this.dpi,   this.corr,  this.count, this.count, this.count, this.comments
-            ];
+            return [this.index, this.dpi,   this.corr,  this.count, this.count, this.count, this.comments];
         },
         widthRem: function(name) {
-            console.log(this[name]);
             return this[name].reduce((a, b) => a + b, 0);   // Rem of all column types summed up
         },
         widthGaps: function(name) {
-            return (this[name].length - 1 + 2) * 10;    // Subtract one from length to get gaps, then add horizontal padding
+            let ret = (this[name].length - 1 + 2) * 10;    // Subtract one from length to get gaps, then add horizontal padding
+            // Add 5px horizontal padding for every input field (this is fucky and WILL break if anything else is the same width as these)
+            ret += this[name].reduce((a, b) => b === this.count || b === this.comments ? a + 10 : a, 0);    
+            return ret;
         },
         getWidths: function(name) {
             return [this.widthRem(name), this.widthGaps(name)];
@@ -157,6 +152,7 @@
     function setWidths() {
         if($CurrentMainTab && $CurrentMainTab != "") {
             [listContainerMinWidthRem, listContainerMinWidthPx] = widths.getWidths($CurrentMainTab.toLowerCase());
+
         }
     };
 </script>
@@ -294,12 +290,11 @@
 
 
 <style>
-    /* https://stackoverflow.com/questions/23794713/how-can-i-have-two-fixed-width-columns-with-one-flexible-column-in-the-center
-       LOOK AT THIS STUFF */
     .group {
         display: flex;
+        align-items: center;
         column-gap: 10px;
-        padding: 10px 10px 10px 10px;
+        padding: 7.5px 10px;
     }
     .idx {
         flex: 2 0 2rem; 
@@ -311,12 +306,9 @@
         flex: 2.5 0 2.5rem;
     }
     .count {
-        min-width: 0;
         flex: 4 0 4rem;
-        padding: 0px;
     }
     .comments {
-        min-width: 0;
         flex: 10 0 10rem;
     }
     .temp-message {
@@ -325,6 +317,8 @@
         padding: 20px 0px;
     }
     input {
+        min-width: 0;
         background-color: var(--clr-primary-5);
+        padding: 2.5px;
     }
 </style>
