@@ -25,22 +25,22 @@
     </div>
     <ListContainerLineBreak />
     {#each $ProjectBoardStore as projectListing}
-    <div class="listing">
-        <div class="listing-info">
-            <a href="/board/{projectListing.id}">{projectListing.client_name_last}, {projectListing.client_name_first}</a>
+        <div class="listing">
+            <div class="listing-info">
+                <a href="/board/{projectListing.id}">{projectListing.client_name_last}, {projectListing.client_name_first}</a>
+            </div>
+            <ol class="media-container">
+                {#each projectListing.media_types as mediaType}
+                    <li class="media">{mediaType}</li>
+                {/each}
+            </ol>       
+            <div class="listing-info">
+                <p title="Taken in on {projectListing.date_in_formatted}" style="{projectListing.is_hard_due ? "color:red;font-weight:bold" : ""}">
+                    <u>{projectListing.date_due_formatted}</u>
+                </p>
+            </div>
+            <div class="listing-info">{projectListing.comments}</div>
         </div>
-        <ol class="media-container">
-            {#each projectListing.media_types as mediaType}
-                <li class="media">{mediaType}</li>
-            {/each}
-        </ol>       
-        <div class="listing-info">
-            <p title="Taken in on {projectListing.date_in_formatted}" style="{projectListing.is_hard_due ? "color:red;font-weight:bold" : ""}">
-                <u>{projectListing.date_due_formatted}</u>
-            </p>
-        </div>
-        <div class="listing-info">{projectListing.comments}</div>
-    </div>
     {/each}
 </ListContainer>
 

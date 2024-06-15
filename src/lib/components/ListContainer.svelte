@@ -1,20 +1,20 @@
 <script>
     import { CurrentMainTab } from '$lib/scripts/mtd-store.js';
 
-    export let minWidthRem = 40;
+    export let minWidthRem = 0;
+    export let minWidthPx = 0;
     export let tabs = [];
 
     function setTab(tabName) {
-        console.log(tabName["tab"]);
         CurrentMainTab.set(tabName["tab"]);
     }
 </script>
 
 <!-- Hacky workaround to make the page have a 20px border on the right-->
-<div style="width:calc({minWidthRem}rem + calc(var(--gap-listcontainer) * 2)); height: 0.01px; background-color: green; opacity: 0%"></div>
+<div style="width:calc(calc({minWidthRem}rem + {minWidthPx}px) + calc(var(--gap-listcontainer) * 2)); height: 0.01px; background-color: green; opacity: 0%"></div>
 
 {#if tabs.length}
-    <ol style="--minWidthRem: {minWidthRem}rem;" class="container-spacer tab-bar">
+    <ol style="--minWidth: calc({minWidthRem}rem + {minWidthPx}px);" class="container-spacer tab-bar">
         <li class="tabs-indent"/>
         {#each tabs as tab}
             <li class="tab" style="{tab == $CurrentMainTab ? "border-bottom-width: 0px;" : "background-color: var(--clr-primary-5-1);"}">
@@ -23,7 +23,8 @@
         {/each}
     </ol>
 {/if}
-<div style="--minWidthRem: {minWidthRem}rem; top: {tabs.length && $CurrentMainTab  ? "0px" : "var(--gap-listcontainer)"};" class="container-spacer list-container">
+
+<div style="--minWidth: calc({minWidthRem}rem + {minWidthPx}px); top: {tabs.length && $CurrentMainTab  ? "0px" : "var(--gap-listcontainer)"};" class="container-spacer list-container">
     <slot>
         No content found!
     </slot>
@@ -34,16 +35,13 @@
     .container-spacer {
         position: relative;
         left: var(--gap-listcontainer);
-        width: max(calc(100% - calc(var(--gap-listcontainer) * 2)), var(--minWidthRem));
+        width: max(calc(100% - calc(var(--gap-listcontainer) * 2)), var(--minWidth));
 
     }
     .list-container {
         background-color: white;
-
         border-radius: calc(var(--gap-listcontainer) / 2);
         border: var(--border-size-med) solid var(--clr-primary-5-1);
-        
-        /*margin-right: var(--gap-small);*/
     }
     .tab-bar {
         display: flex;

@@ -1,5 +1,5 @@
 <script>
-    import {PageNameStore} from '$lib/scripts/mtd-store.js';
+    import { PageNameStore } from '$lib/scripts/mtd-store.js';
 
     import NavButton from "$lib/components/NavButton.svelte";
     import FolderImage from '$lib/assets/folder_open_24dp_FILL0_wght400_GRAD0_opsz24.svg';
