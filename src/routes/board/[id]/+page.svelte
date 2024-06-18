@@ -1,9 +1,24 @@
 <script>
     import { onMount } from 'svelte';
     import { PageNameStore, CurrentMainTab, ProjectWebsocket, BACKENDIP } from '$lib/scripts/mtd-store.js';
-    import { boolToString, enforceNumericInput } from '$lib/scripts/helpers.js';
+    import { boolToString } from '$lib/scripts/helpers.js';
+    import { setContext } from 'svelte';
+    import CountColumn from './components/CountColumn.svelte';
+    import TextColumn from './components/TextColumn.svelte';
     import ListContainer from '$lib/components/ListContainer.svelte';
     import ListContainerLineBreak from '$lib/components/ListContainerLineBreak.svelte';
+
+    function sendUpdate(idx, col, val) {
+        let json = {
+            'job' : $CurrentMainTab,
+            'idx' : idx,
+            'col' : col,
+            'val' : val
+        };
+        console.log(json);
+        $ProjectWebsocket.send(JSON.stringify(json));
+    }
+    setContext("sendGroupUpdate", sendUpdate);
 
     export let data;
 
@@ -30,7 +45,7 @@
         const response = await fetch(endpoint, {method: "GET"});
         if(response.status == 200) {
             project = await response.json();
-            PageNameStore.set(project["client_name_last"] + ", " + project["client_name_first"])
+            PageNameStore.set(project["formatted_project_name"]);
 
             if(project.hasOwnProperty("slides_job")) {
                 tabsCache.push('Slides');
@@ -104,15 +119,6 @@
         }
     };
 
-    function sendUpdate(idx, col, val) {
-        $ProjectWebsocket.send(JSON.stringify({
-            'job' : $CurrentMainTab,
-            'idx' : idx,
-            'col' : col,
-            'val' : val.target.value
-        }));
-    }
-
     ///
 
     let widths = {
@@ -152,7 +158,6 @@
     function setWidths() {
         if($CurrentMainTab && $CurrentMainTab != "") {
             [listContainerMinWidthRem, listContainerMinWidthPx] = widths.getWidths($CurrentMainTab.toLowerCase());
-
         }
     };
 </script>
@@ -175,23 +180,9 @@
                     <div class="idx">{idx}</div>
                     <div class="dpi">{"dpi" in groupData ? groupData["dpi"] : defaults.slidesDpi}</div>
                     <div class="corr">{"correct" in groupData ? boolToString(groupData["correct"]) : defaults.slidesCorrect}</div>
-                    <input class="count"
-                        on:change={(val) => sendUpdate(idx, "final_scanner_count", val)} 
-                        on:input={(text) => enforceNumericInput(text)} 
-                        placeholder={groupData["intake_scanner_count"] ?? 0}
-                        value={groupData["final_scanner_count"] ?? ""}
-                    >
-                    <input class="count"
-                        on:change={(val) => sendUpdate(idx, "final_hs_count", val)} 
-                        on:input={(text) => enforceNumericInput(text)} 
-                        placeholder={groupData["intake_hs_count"] ?? 0}
-                        value={groupData["final_hs_count"] ?? ""}
-                    >
-                    <input class="comments"
-                        on:change={(text) => sendUpdate(idx, "comments", text)}
-                        placeholder={groupData["comments"] ?? ""}
-                        value={groupData["comments"] ?? ""}
-                    >
+                    <CountColumn idx={idx} intakeAttr={groupData.intake_scanner_count} finalAttr={groupData.final_scanner_count} updateName="final_scanner_count"/>
+                    <CountColumn idx={idx} intakeAttr={groupData.intake_hs_count} finalAttr={groupData.final_hs_count} updateName="final_hs_count"/>
+                    <TextColumn idx={idx} currentValue={groupData.comments} updateName="comments"/>
                 </div>
             {/each}
 
@@ -211,28 +202,10 @@
                     <div class="idx">{idx}</div>
                     <div class="dpi">{"dpi" in groupData ? groupData["dpi"] : defaults.printsDpi}</div>
                     <div class="corr">{"correct" in groupData ? boolToString(groupData["correct"]) : defaults.printsCorrect}</div>
-                    <input class="count"
-                        on:input={(text) => enforceNumericInput(text)} 
-                        placeholder={groupData["intake_lp_count"] ?? 0}
-                        on:change={(val) => sendUpdate(idx, "final_lp_count", val)}
-                        value={groupData["final_lp_count"] ?? ""}
-                    >
-                    <input class="count"
-                        on:input={(text) => enforceNumericInput(text)} 
-                        placeholder={groupData["intake_hs_count"] ?? 0}
-                        on:change={(val) => sendUpdate(idx, "final_hs_count", val)}
-                        value={groupData["final_hs_count"] ?? ""}
-                    >
-                    <input class="count"
-                        on:input={(text) => enforceNumericInput(text)}
-                        placeholder={groupData["intake_oshs_count"] ?? 0}
-                        on:change={(val) => sendUpdate(idx, "final_oshs_count", val)}
-                        value={groupData["final_oshs_count"] ?? ""}
-                    >
-                    <input class="comments"
-                        on:change={(val) => sendUpdate(idx, "comments", val)}
-                        value={groupData["comments"] ?? ""}
-                    >
+                    <CountColumn idx={idx} intakeAttr={groupData.intake_lp_count} finalAttr={groupData.final_lp_count} updateName="final_lp_count"/>
+                    <CountColumn idx={idx} intakeAttr={groupData.intake_hs_count} finalAttr={groupData.final_hs_count} updateName="final_hs_count"/>
+                    <CountColumn idx={idx} intakeAttr={groupData.intake_oshs_count} finalAttr={groupData.final_oshs_count} updateName="final_oshs_count"/>
+                    <TextColumn idx={idx} currentValue={groupData.comments} updateName="comments"/>
                 </div>
             {/each}
 
@@ -252,28 +225,10 @@
                     <div class="idx">{idx}</div>
                     <div class="dpi">{"dpi" in groupData ? groupData["dpi"] : defaults.negativesDpi}</div>
                     <div class="corr">{"correct" in groupData ? boolToString(groupData["correct"]) : defaults.negativesCorrect}</div>
-                    <input class="count"
-                        on:input={(text) => enforceNumericInput(text)} 
-                        placeholder={groupData["intake_strip_count"] ?? 0}
-                        on:change={(val) => sendUpdate(idx, "final_strip_count", val)}
-                        value={groupData["final_strip_count"] ?? ""}
-                    >
-                    <input class="count"
-                        on:input={(text) => enforceNumericInput(text)} 
-                        placeholder={groupData["intake_hs_count"] ?? 0}
-                        on:change={(val) => sendUpdate(idx, "final_hs_count", val)}
-                        value={groupData["final_hs_count"] ?? ""}
-                    >
-                    <input class="count"
-                        on:input={(text) => enforceNumericInput(text)}
-                        placeholder={groupData["intake_images_count"] ?? 0}
-                        on:change={(val) => sendUpdate(idx, "final_images_count", val)}
-                        value={groupData["final_images_count"] ?? ""}
-                    >
-                    <input class="comments"
-                        on:change={(val) => sendUpdate(idx, "comments", val)}
-                        value={groupData["comments"] ?? ""}
-                    >
+                    <CountColumn idx={idx} intakeAttr={groupData.intake_strip_count} finalAttr={groupData.final_strip_count} updateName="final_strip_count"/>
+                    <CountColumn idx={idx} intakeAttr={groupData.intake_hs_count} finalAttr={groupData.final_hs_count} updateName="final_hs_count"/>
+                    <CountColumn idx={idx} intakeAttr={groupData.intake_images_count} finalAttr={groupData.final_images_count} updateName="final_images_count"/>
+                    <TextColumn idx={idx} currentValue={groupData.comments} updateName="comments"/>
                 </div>
             {/each}
 
@@ -315,10 +270,5 @@
         width: 100%;
         text-align: center;
         padding: 20px 0px;
-    }
-    input {
-        min-width: 0;
-        background-color: var(--clr-primary-5);
-        padding: 2.5px;
     }
 </style>

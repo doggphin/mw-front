@@ -36,7 +36,32 @@
     :root {
         background-color: var(--clr-primary-5);
     }
-
+    .right {
+        position: relative;
+        left: 200px;
+        width: calc(100% - 200px);
+    }
+    .header {
+        width: 100%;
+        position: fixed;
+        background-color: white;
+        height: 75px;
+        display: flex;
+        container-type: inline-size;
+    }
+    /* https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_containment/Container_queries */
+    /* Try to use this instead */
+    .page-name {
+        margin: auto 0px auto 20px;
+        font-weight: bold;
+        font-size: 25px;
+        width: calc(100% - 300px);
+    }
+    @container (max-width: 550px) {
+        .page-name {
+            font-size: 15px;
+        }
+    }
     nav {
         position: fixed;
         background-color: var(--clr-primary-1);
@@ -48,29 +73,10 @@
         display: flex;
         margin-bottom: 20px;
         margin: 5%;
-    }
-
-    .right {
-        position: relative;
-        left: 200px;
-        width: calc(100% - 200px);
+        text-overflow: ellipsis;
     }
     .main-body {
         position: relative;
         top: 75px;
-    }
-    .header {
-        width: 100%;
-        position: fixed;
-        background-color: white;
-        height: 75px;
-        z-index: 72;
-
-        display: flex;
-    }
-    .page-name {
-        margin: auto 0px auto 30px;
-        font-weight: bold;
-        transform: scale(1.1, 1);
     }
 </style>
