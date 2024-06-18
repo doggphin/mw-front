@@ -1,26 +1,19 @@
 <script>
-    import { onMount } from 'svelte';
     import { PageNameStore, CurrentMainTab, ProjectWebsocket, BACKENDIP } from '$lib/scripts/mtd-store.js';
     import { boolToString } from '$lib/scripts/helpers.js';
-    import { setContext } from 'svelte';
-    import CountColumn from './components/CountColumn.svelte';
-    import TextColumn from './components/TextColumn.svelte';
+    import { widthConsts } from './widthConsts.js';
+    import { setContext, onMount, onDestroy } from 'svelte';
+
     import ListContainer from '$lib/components/ListContainer.svelte';
     import ListContainerLineBreak from '$lib/components/ListContainerLineBreak.svelte';
+    import Row from './components/Row.svelte';
+    import TitleRow from './components/TitleRow.svelte';
+    import CountColumn from './components/CountColumn.svelte';
+    import TextColumn from './components/TextColumn.svelte';
 
-    function sendUpdate(idx, col, val) {
-        let json = {
-            'job' : $CurrentMainTab,
-            'idx' : idx,
-            'col' : col,
-            'val' : val
-        };
-        console.log(json);
-        $ProjectWebsocket.send(JSON.stringify(json));
-    }
-    setContext("sendGroupUpdate", sendUpdate);
+    export let data;    // Gets page number from page.js
 
-    export let data;
+    /// IMPORT DATA ///
 
     let error = 0;
     let tabsCache = [];
@@ -47,6 +40,7 @@
             project = await response.json();
             PageNameStore.set(project["formatted_project_name"]);
 
+            // REWRITE THIS
             if(project.hasOwnProperty("slides_job")) {
                 tabsCache.push('Slides');
                 defaults.slidesDpi = project['slides_job']['default_dpi'];
@@ -72,12 +66,20 @@
         }
     });
 
-    ///
+    /// WEBSOCKETS ///
 
-    import { onDestroy } from 'svelte';
+    function sendUpdate(idx, col, val) {
+        let json = {
+            'job' : $CurrentMainTab,
+            'idx' : idx,
+            'col' : col,
+            'val' : val
+        };
+        $ProjectWebsocket.send(JSON.stringify(json));
+    }
+    setContext("sendGroupUpdate", sendUpdate);
 
-    // Close websocket when going to another page
-    onDestroy(() => {
+    onDestroy(() => {       // Close websocket when going to another page
         if($ProjectWebsocket.readyState === 1) {
             $ProjectWebsocket.close();
         }
@@ -99,56 +101,71 @@
     $ProjectWebsocket.onmessage = (event) => {
         try {
             const msg = (JSON.parse(event.data))['message'];
+            let photoJob = null;
             switch(msg['job']) {
-                // Reactive group elements need to be set directly, I don't think there's a way to clean this up
                 case 'slides_job':
-                    slidesGroups[msg['idx']][msg['col']] = msg['val'];
+                    photoJob = slidesGroups;
                     break;
                 case 'prints_job':
-                    printsGroups[msg['idx']][msg['col']] = msg['val'];
+                    photoJob = printsGroups;
                     break;
                 case 'negatives_job':
-                    negativesGroups[msg['idx']][msg['col']] = msg['val'];
+                    photoJob = negativesGroups;
                     break;
-                default:
-                    console.error(`Unrecognized socket message where job = ${msg['job']}`);
-                    return;
+            }
+            if(photoJob) {
+                photoJob[msg['idx']][msg['col']] = msg['val'];
+            } else {
+                console.error(`Unrecognized socket message where job = ${msg['job']}`);
             }
         } catch(Error) {
             error("Error reading websocket message.");
         }
     };
 
-    ///
+    /// WIDTHS ///
 
     let widths = {
-        // rem widths
-        index: 2,
-        dpi: 3,
-        corr: 2.5,
-        count: 4,
-        comments: 10,
-
         get slides() {
-            return [this.index, this.dpi,   this.corr,  this.count, this.count, this.comments];
+            return {
+                "#" : widthConsts.index,
+                "DPI" : widthConsts.dpi,  
+                "Corr." : widthConsts.corr, 
+                "Scan" : widthConsts.number,
+                "HS" : widthConsts.number,
+                "Comments" : widthConsts.comments
+            }
         },
         get prints() {
-            return [this.index, this.dpi,   this.corr,  this.count, this.count, this.count, this.comments];
+            return {
+                "#" : widthConsts.index,
+                "DPI" : widthConsts.dpi,  
+                "Corr." : widthConsts.corr, 
+                "LP" : widthConsts.number,
+                "HS" : widthConsts.number,
+                "OSHS" : widthConsts.number,
+                "Comments" : widthConsts.comments
+            }
         },
         get negatives() {
-            return [this.index, this.dpi,   this.corr,  this.count, this.count, this.count, this.comments];
+            return {
+                "#" : widthConsts.index,
+                "DPI" : widthConsts.dpi,  
+                "Corr." : widthConsts.corr, 
+                "Strips" : widthConsts.number,
+                "HS" : widthConsts.number,
+                "Count" : widthConsts.number,
+                "Comments" : widthConsts.comments
+            }
         },
-        widthRem: function(name) {
-            return this[name].reduce((a, b) => a + b, 0);   // Rem of all column types summed up
+        getSumColumnWidthsRem: function(name) {
+            return Object.entries(this[name]).reduce((a, [key, value]) => a + value, 0);
         },
-        widthGaps: function(name) {
-            let ret = (this[name].length - 1 + 2) * 10;    // Subtract one from length to get gaps, then add horizontal padding
-            // Add 5px horizontal padding for every input field (this is fucky and WILL break if anything else is the same width as these)
-            ret += this[name].reduce((a, b) => b === this.count || b === this.comments ? a + 10 : a, 0);    
-            return ret;
+        getColumnGapsPx: function(name) {
+            return 10 * (Object.entries(this[name]).length - 1 + 2);    // Subtracts one from length to get gaps between columns, then add horizontal padding
         },
-        getWidths: function(name) {
-            return [this.widthRem(name), this.widthGaps(name)];
+        getWidth: function(name) {
+            return [this.getSumColumnWidthsRem(name), this.getColumnGapsPx(name)];
         }
     }
 
@@ -157,7 +174,7 @@
     $: $CurrentMainTab, setWidths()
     function setWidths() {
         if($CurrentMainTab && $CurrentMainTab != "") {
-            [listContainerMinWidthRem, listContainerMinWidthPx] = widths.getWidths($CurrentMainTab.toLowerCase());
+            [listContainerMinWidthRem, listContainerMinWidthPx] = widths.getWidth($CurrentMainTab.toLowerCase());
         }
     };
 </script>
@@ -166,105 +183,68 @@
 <ListContainer minWidthRem={listContainerMinWidthRem} minWidthPx={listContainerMinWidthPx} tabs={tabsCache}>
     {#if project}
         {#if $CurrentMainTab == "Slides" && slidesGroups}
-            <ol class="group">
-                <li class="idx"> # </li>
-                <li class="dpi"> DPI </li>
-                <li class="corr"> Corr. </li>
-                <li class="count"> Normal </li>
-                <li class="count"> HS </li>
-                <li class="comments"> Comments </li>
-            </ol>
-            <ListContainerLineBreak />
+            <Row>
+                <TitleRow titles={widths.slides}/>
+            </Row>
+            <ListContainerLineBreak/>
             {#each Object.entries(slidesGroups || {}) as [idx, groupData]}
-                <div class="group">
+                <Row>
                     <div class="idx">{idx}</div>
                     <div class="dpi">{"dpi" in groupData ? groupData["dpi"] : defaults.slidesDpi}</div>
                     <div class="corr">{"correct" in groupData ? boolToString(groupData["correct"]) : defaults.slidesCorrect}</div>
-                    <CountColumn idx={idx} intakeAttr={groupData.intake_scanner_count} finalAttr={groupData.final_scanner_count} updateName="final_scanner_count"/>
-                    <CountColumn idx={idx} intakeAttr={groupData.intake_hs_count} finalAttr={groupData.final_hs_count} updateName="final_hs_count"/>
-                    <TextColumn idx={idx} currentValue={groupData.comments} updateName="comments"/>
-                </div>
+                    <CountColumn idx={idx} intake={groupData.intake_scanner_count} final={groupData.final_scanner_count} name="final_scanner_count"/>
+                    <CountColumn idx={idx} intake={groupData.intake_hs_count} final={groupData.final_hs_count} name="final_hs_count"/>
+                    <TextColumn idx={idx} value={groupData.comments} name="comments"/>
+                </Row>
             {/each}
-
         {:else if $CurrentMainTab == "Prints"}
-            <ol class="group">
-                <li class="idx"> # </li>
-                <li class="dpi"> DPI </li>
-                <li class="corr"> Corr. </li>
-                <li class="count"> LP </li>
-                <li class="count"> HS </li>
-                <li class="count"> OSHS </li>
-                <li class="comments"> Comments </li>
-            </ol>
-            <ListContainerLineBreak />
+            <Row>
+                <TitleRow titles={widths.prints}/>
+            </Row>
+            <ListContainerLineBreak/>
             {#each Object.entries(printsGroups || {}) as [idx, groupData]}
-                <div class="group">
+                <Row>
                     <div class="idx">{idx}</div>
                     <div class="dpi">{"dpi" in groupData ? groupData["dpi"] : defaults.printsDpi}</div>
                     <div class="corr">{"correct" in groupData ? boolToString(groupData["correct"]) : defaults.printsCorrect}</div>
-                    <CountColumn idx={idx} intakeAttr={groupData.intake_lp_count} finalAttr={groupData.final_lp_count} updateName="final_lp_count"/>
-                    <CountColumn idx={idx} intakeAttr={groupData.intake_hs_count} finalAttr={groupData.final_hs_count} updateName="final_hs_count"/>
-                    <CountColumn idx={idx} intakeAttr={groupData.intake_oshs_count} finalAttr={groupData.final_oshs_count} updateName="final_oshs_count"/>
-                    <TextColumn idx={idx} currentValue={groupData.comments} updateName="comments"/>
-                </div>
+                    <CountColumn idx={idx} intake={groupData.intake_lp_count} final={groupData.final_lp_count} name="final_lp_count"/>
+                    <CountColumn idx={idx} intake={groupData.intake_hs_count} final={groupData.final_hs_count} name="final_hs_count"/>
+                    <CountColumn idx={idx} intake={groupData.intake_oshs_count} final={groupData.final_oshs_count} name="final_oshs_count"/>
+                    <TextColumn idx={idx} value={groupData.comments} name="comments"/>
+                </Row>
             {/each}
-
         {:else if $CurrentMainTab == "Negatives"}
-            <ol class="group">
-                <li class="idx"> # </li>
-                <li class="dpi"> DPI </li>
-                <li class="corr"> Corr. </li>
-                <li class="count"> Strips </li>
-                <li class="count"> HS </li>
-                <li class="count"> # Images </li>
-                <li class="comments"> Comments </li>
-            </ol>
-            <ListContainerLineBreak />
+            <Row>
+                <TitleRow titles={widths.negatives}/>
+            </Row>
+            <ListContainerLineBreak/>
             {#each Object.entries(negativesGroups || {}) as [idx, groupData]}
-                <div class="group">
+                <Row>
                     <div class="idx">{idx}</div>
                     <div class="dpi">{"dpi" in groupData ? groupData["dpi"] : defaults.negativesDpi}</div>
                     <div class="corr">{"correct" in groupData ? boolToString(groupData["correct"]) : defaults.negativesCorrect}</div>
-                    <CountColumn idx={idx} intakeAttr={groupData.intake_strip_count} finalAttr={groupData.final_strip_count} updateName="final_strip_count"/>
-                    <CountColumn idx={idx} intakeAttr={groupData.intake_hs_count} finalAttr={groupData.final_hs_count} updateName="final_hs_count"/>
-                    <CountColumn idx={idx} intakeAttr={groupData.intake_images_count} finalAttr={groupData.final_images_count} updateName="final_images_count"/>
-                    <TextColumn idx={idx} currentValue={groupData.comments} updateName="comments"/>
-                </div>
+                    <CountColumn idx={idx} intake={groupData.intake_strip_count} final={groupData.final_strip_count} name="final_strip_count"/>
+                    <CountColumn idx={idx} intake={groupData.intake_hs_count} final={groupData.final_hs_count} name="final_hs_count"/>
+                    <CountColumn idx={idx} intake={groupData.intake_images_count} final={groupData.final_images_count} name="final_images_count"/>
+                    <TextColumn idx={idx} value={groupData.comments} name="comments"/>
+                </Row>
             {/each}
-
         {/if}
     {:else}
-        {#if error}
-            <p class="temp-message"> No project found with ID {data.id}.</p>
-        {:else}
-            <p class="temp-message"> Loading... </p>
-        {/if}
+        <p class="temp-message">{error ? "No project found with ID {data.id}." : "Loading..."}</p>
     {/if}
 </ListContainer>
 
 
-
 <style>
-    .group {
-        display: flex;
-        align-items: center;
-        column-gap: 10px;
-        padding: 7.5px 10px;
-    }
     .idx {
-        flex: 2 0 2rem; 
+        flex: 2 0 2rem;
     }
     .dpi {
         flex: 3 0 3rem;
     }
     .corr {
         flex: 2.5 0 2.5rem;
-    }
-    .count {
-        flex: 4 0 4rem;
-    }
-    .comments {
-        flex: 10 0 10rem;
     }
     .temp-message {
         width: 100%;
