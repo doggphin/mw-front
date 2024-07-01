@@ -1,3 +1,5 @@
+export let backendIp = 'localhost:8000';
+
 export function boolToChar(boolean) {
     return boolean ? "Y" : "N";
 }

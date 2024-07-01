@@ -1,0 +1,1 @@
+export let backendIp = 'localhost:8000';

@@ -1,6 +1,7 @@
 <script>
-    import { PageNameStore, CurrentMainTab, ProjectWebsocket, BACKENDIP } from '$lib/scripts/mtd-store.js';
+    import { PageNameStore, CurrentMainTab, ProjectWebsocket } from '$lib/scripts/mtd-store.js';
     import { boolToChar, getRandom } from '$lib/scripts/helpers.js';
+    import { BACKENDIP } from '$lib/ips.js';
     import { widthConsts } from './widthConsts.js';
     import { setContext, onMount, onDestroy } from 'svelte';
 
@@ -107,7 +108,7 @@
     if($ProjectWebsocket != null) {
         $ProjectWebsocket.close();
     }
-    ProjectWebsocket.set(new WebSocket(`ws://localhost:8000/ws/project/${data.id}/`));
+    ProjectWebsocket.set(new WebSocket(`ws://${BACKENDIP}/ws/project/${data.id}/`));
 
     $ProjectWebsocket.onclose = (e) => {
         console.log('Websocket connection closed!');
