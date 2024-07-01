@@ -1,27 +1,35 @@
 <script>
     import { getContext } from 'svelte';
     import { widthConsts } from '../widthConsts.js';
-    let sendUpdate = getContext('sendGroupUpdate');
+    let addGroupUpdate = getContext('addGroupUpdate');
 
-    export let idx, value, name;
-    export let width = widthConsts.comments;
+    export let idx, groupData, name;
+    let width = widthConsts.comments;
 
-    let valueBind = value ?? "";
+    function onChange(val) {
+        addGroupUpdate(idx, name, val);
+        groupData[name] = val;
+    }
 </script>
 
 
-<input style="flex: {width} 0 {width}em;"
-    on:change={(val) => sendUpdate(idx, name, val.target.value)}
-    bind:value={valueBind}
+<span
+    contenteditable="true"
+    style="flex: {width} 0 {width}rem; max-width: {width}"
+    on:input={(e) => onChange(e.target.textContent)}
+    textContent={groupData[name] ?? ""}
 >
+    {groupData[name] ?? ""}
+</span>
 
 
 <style>
-    input {
+    span {
         min-width: 0;
         background-color: var(--clr-primary-5);
         padding: 2.5px;
-        margin: 0px -2.5px; /* Makes up for padding */
+        margin: 0 -2.5px; /* To fix added padding */
         border-radius: 5px;
+        min-height: 20px;
     }
 </style>

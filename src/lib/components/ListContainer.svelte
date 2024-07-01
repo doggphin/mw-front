@@ -36,7 +36,6 @@
         position: relative;
         left: var(--gap-listcontainer);
         width: max(calc(100% - calc(var(--gap-listcontainer) * 2)), var(--minWidth));
-
     }
     .list-container {
         background-color: white;

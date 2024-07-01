@@ -7,7 +7,7 @@
 
 <a class="container noselect" href="{link}">
     <div class="image-container">
-        <img src={iconSrc} alt="An alt text" />
+        <img src={iconSrc} alt="Nav Button Icon" />
     </div>
     <div class="text-container">
         <h3>{text}</h3>
@@ -26,7 +26,7 @@
         text-decoration: none;
     }
     .container:hover {
-        background-color: var(--clr-primary-1-hover);
+        background-color: var(--clr-primary-1-1);
     }
     .image-container {
         margin: auto 0px auto 15px;

@@ -24,7 +24,7 @@
         <div>Status</div>
     </div>
     <ListContainerLineBreak />
-    {#each $ProjectBoardStore as projectListing}
+    {#each $ProjectBoardStore as projectListing, idx}
         <div class="listing">
             <div class="listing-info">
                 <a href="/board/{projectListing.id}">{projectListing.client_name_last}, {projectListing.client_name_first}</a>
@@ -41,6 +41,9 @@
             </div>
             <div class="listing-info">{projectListing.comments}</div>
         </div>
+        {#if idx < $ProjectBoardStore.length - 1}
+            <ListContainerLineBreak dotted={true}/>
+        {/if}
     {/each}
 </ListContainer>
 
@@ -53,6 +56,7 @@
     }
     .media-container {
         display: flex;
+        align-items: center;
         flex-wrap: wrap;
     }
     .media {
@@ -61,6 +65,7 @@
         border: 2px solid var(--clr-primary-3);
         border-radius: 20px;
         background-color: var(--clr-primary-4);
+        height: 1rem;
     }
     .listing-info {
         margin: auto 0px auto 0px;

@@ -1,6 +1,15 @@
+<script>
+    export let showLine = true;
+    export let dotted = false;
+    import ListContainerLineBreak from "$lib/components/ListContainerLineBreak.svelte";
+</script>
+
 <ol>
     <slot/>
 </ol>
+{#if showLine}
+    <ListContainerLineBreak dotted={dotted}/>
+{/if}
 
 <style>
     ol {

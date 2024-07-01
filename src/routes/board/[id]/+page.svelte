@@ -1,15 +1,16 @@
 <script>
     import { PageNameStore, CurrentMainTab, ProjectWebsocket, BACKENDIP } from '$lib/scripts/mtd-store.js';
-    import { boolToString } from '$lib/scripts/helpers.js';
+    import { boolToChar, getRandom } from '$lib/scripts/helpers.js';
     import { widthConsts } from './widthConsts.js';
     import { setContext, onMount, onDestroy } from 'svelte';
 
     import ListContainer from '$lib/components/ListContainer.svelte';
-    import ListContainerLineBreak from '$lib/components/ListContainerLineBreak.svelte';
     import Row from './components/Row.svelte';
     import TitleRow from './components/TitleRow.svelte';
+    import YNColumn from './components/YNColumn.svelte';
     import CountColumn from './components/CountColumn.svelte';
     import TextColumn from './components/TextColumn.svelte';
+    import TimerColumn from './components/TimerColumn.svelte';
 
     export let data;    // Gets page number from page.js
 
@@ -30,7 +31,7 @@
     $: printsGroups = project?.["prints_job"]?.["groups"];
     $: negativesGroups = project?.["negatives_job"]?.["groups"];
 
-    let project = {};
+    let project;
     onMount(async () => {
         PageNameStore.set("");
         CurrentMainTab.set();
@@ -44,40 +45,58 @@
             if(project.hasOwnProperty("slides_job")) {
                 tabsCache.push('Slides');
                 defaults.slidesDpi = project['slides_job']['default_dpi'];
-                defaults.slidesCorrect = boolToString(project['slides_job']['default_dpi'])
+                defaults.slidesCorrect = boolToChar(project['slides_job']['default_dpi'])
             }
             if(project.hasOwnProperty("prints_job")) {
                 tabsCache.push('Prints');
                 defaults.printsDpi = project['prints_job']['default_dpi'];
-                defaults.printsCorrect = boolToString(project['prints_job']['default_dpi'])
+                defaults.printsCorrect = boolToChar(project['prints_job']['default_dpi'])
             }
             if(project.hasOwnProperty("negatives_job")) {
                 tabsCache.push('Negatives');
                 defaults.negativesDpi = project['negatives_job']['default_dpi'];
-                defaults.negativesCorrect = boolToString(['negatives_job']['default_dpi'])
+                defaults.negativesCorrect = boolToChar(['negatives_job']['default_dpi'])
             }
 
             if(tabsCache.length > 0) {
                 CurrentMainTab.set(tabsCache[0]);
             }
         } else {
-            PageNameStore.set("Error");
+            PageNameStore.set("Project does not exist");
             error = 1;
         }
     });
 
     /// WEBSOCKETS ///
 
-    function sendUpdate(idx, col, val) {
-        let json = {
+    let myIdentifierToken = getRandom(-2147483648, 2147483647);
+    let groupUpdateQueue = {
+        'token': myIdentifierToken,
+        'data': []
+    };
+    function addGroupUpdate(idx, col, val) {
+        // Try to replace any previous updates with this update if possible
+        for(let i=0; i<groupUpdateQueue.data.length; i++) {         
+            if($CurrentMainTab == groupUpdateQueue.data[i].job && idx === groupUpdateQueue.data[i].idx && col === groupUpdateQueue.data[i].col) {
+                groupUpdateQueue.data[i].val = val;
+                return;
+            }
+        }
+        groupUpdateQueue.data.push({
             'job' : $CurrentMainTab,
             'idx' : idx,
             'col' : col,
             'val' : val
-        };
-        $ProjectWebsocket.send(JSON.stringify(json));
+        });
     }
-    setContext("sendGroupUpdate", sendUpdate);
+    function sendUpdate() {
+        if(groupUpdateQueue.data.length > 0) {
+            $ProjectWebsocket.send(JSON.stringify(groupUpdateQueue));
+            groupUpdateQueue.data = [];
+        }
+    }
+    setInterval(sendUpdate, 500);
+    setContext("addGroupUpdate", addGroupUpdate);
 
     onDestroy(() => {       // Close websocket when going to another page
         if($ProjectWebsocket.readyState === 1) {
@@ -101,23 +120,29 @@
     $ProjectWebsocket.onmessage = (event) => {
         try {
             const msg = (JSON.parse(event.data))['message'];
+            if(msg['token'] === myIdentifierToken) {
+                return;
+            }
             let photoJob = null;
             switch(msg['job']) {
                 case 'slides_job':
-                    photoJob = slidesGroups;
+                    //photoJob = slidesGroups;
+                    slidesGroups[msg['idx']][msg['col']] = msg['val'];
                     break;
                 case 'prints_job':
-                    photoJob = printsGroups;
+                    //photoJob = printsGroups;
+                    printsGroups[msg['idx']][msg['col']] = msg['val'];
                     break;
                 case 'negatives_job':
-                    photoJob = negativesGroups;
+                    //photoJob = negativesGroups;
+                    negativesGroups[msg['idx']][msg['col']] = msg['val'];
                     break;
             }
-            if(photoJob) {
+            /*if(photoJob) {
                 photoJob[msg['idx']][msg['col']] = msg['val'];
             } else {
                 console.error(`Unrecognized socket message where job = ${msg['job']}`);
-            }
+            }*/
         } catch(Error) {
             error("Error reading websocket message.");
         }
@@ -129,10 +154,11 @@
         get slides() {
             return {
                 "#" : widthConsts.index,
-                "DPI" : widthConsts.dpi,  
+                "DPI" : widthConsts.dpi,
                 "Corr." : widthConsts.corr, 
                 "Scan" : widthConsts.number,
                 "HS" : widthConsts.number,
+                "Editing" : widthConsts.timer,
                 "Comments" : widthConsts.comments
             }
         },
@@ -162,10 +188,12 @@
             return Object.entries(this[name]).reduce((a, [key, value]) => a + value, 0);
         },
         getColumnGapsPx: function(name) {
-            return 10 * (Object.entries(this[name]).length - 1 + 2);    // Subtracts one from length to get gaps between columns, then add horizontal padding
+            // There is 7.5px of extra padding on either end of Row.svelte
+            return 15 + (10 * (Object.entries(this[name]).length));    // Subtracts one from length to get gaps between columns, then add horizontal padding
         },
         getWidth: function(name) {
-            return [this.getSumColumnWidthsRem(name), this.getColumnGapsPx(name)];
+            let res = [this.getSumColumnWidthsRem(name), this.getColumnGapsPx(name)];
+            return res;
         }
     }
 
@@ -186,52 +214,51 @@
             <Row>
                 <TitleRow titles={widths.slides}/>
             </Row>
-            <ListContainerLineBreak/>
-            {#each Object.entries(slidesGroups || {}) as [idx, groupData]}
-                <Row>
+            {#each Object.entries(slidesGroups || {}) as [idx, groupData], i}
+                <Row showLine={i < Object.entries(slidesGroups).length - 1} dotted={true}>
                     <div class="idx">{idx}</div>
                     <div class="dpi">{"dpi" in groupData ? groupData["dpi"] : defaults.slidesDpi}</div>
-                    <div class="corr">{"correct" in groupData ? boolToString(groupData["correct"]) : defaults.slidesCorrect}</div>
-                    <CountColumn idx={idx} intake={groupData.intake_scanner_count} final={groupData.final_scanner_count} name="final_scanner_count"/>
-                    <CountColumn idx={idx} intake={groupData.intake_hs_count} final={groupData.final_hs_count} name="final_hs_count"/>
-                    <TextColumn idx={idx} value={groupData.comments} name="comments"/>
+                    <YNColumn idx={idx} defaultTo={defaults.slidesCorrect} value={groupData.correct} name="dpi"/>
+                    <CountColumn bind:groupData idx={idx} name="scanner_count"/>
+                    <CountColumn bind:groupData idx={idx} name="hs_count"/>
+                    <TimerColumn idx={idx} value={"N/A"} name="editing_time"/>
+                    <TextColumn bind:groupData idx={idx} name="comments"/>
                 </Row>
             {/each}
         {:else if $CurrentMainTab == "Prints"}
-            <Row>
+            <Row dotted={false}>
                 <TitleRow titles={widths.prints}/>
             </Row>
-            <ListContainerLineBreak/>
-            {#each Object.entries(printsGroups || {}) as [idx, groupData]}
-                <Row>
+            {#each Object.entries(printsGroups || {}) as [idx, groupData], i}
+                <Row showLine={i < Object.entries(printsGroups).length - 1} dotted={true}>
                     <div class="idx">{idx}</div>
                     <div class="dpi">{"dpi" in groupData ? groupData["dpi"] : defaults.printsDpi}</div>
-                    <div class="corr">{"correct" in groupData ? boolToString(groupData["correct"]) : defaults.printsCorrect}</div>
-                    <CountColumn idx={idx} intake={groupData.intake_lp_count} final={groupData.final_lp_count} name="final_lp_count"/>
-                    <CountColumn idx={idx} intake={groupData.intake_hs_count} final={groupData.final_hs_count} name="final_hs_count"/>
-                    <CountColumn idx={idx} intake={groupData.intake_oshs_count} final={groupData.final_oshs_count} name="final_oshs_count"/>
-                    <TextColumn idx={idx} value={groupData.comments} name="comments"/>
+                    <YNColumn idx={idx} defaultTo={defaults.printsCorrect} value={groupData.correct} name="dpi"/>
+                    <CountColumn bind:groupData idx={idx} name="lp_count"/>
+                    <CountColumn bind:groupData idx={idx} name="hs_count"/>
+                    <CountColumn bind:groupData idx={idx} name="oshs_count"/>
+                    <TextColumn bind:groupData idx={idx} name="comments"/>
                 </Row>
+
             {/each}
         {:else if $CurrentMainTab == "Negatives"}
             <Row>
                 <TitleRow titles={widths.negatives}/>
             </Row>
-            <ListContainerLineBreak/>
-            {#each Object.entries(negativesGroups || {}) as [idx, groupData]}
-                <Row>
+            {#each Object.entries(negativesGroups || {}) as [idx, groupData], i}
+                <Row showLine={i < Object.entries(negativesGroups).length - 1} dotted={true}>
                     <div class="idx">{idx}</div>
                     <div class="dpi">{"dpi" in groupData ? groupData["dpi"] : defaults.negativesDpi}</div>
-                    <div class="corr">{"correct" in groupData ? boolToString(groupData["correct"]) : defaults.negativesCorrect}</div>
-                    <CountColumn idx={idx} intake={groupData.intake_strip_count} final={groupData.final_strip_count} name="final_strip_count"/>
-                    <CountColumn idx={idx} intake={groupData.intake_hs_count} final={groupData.final_hs_count} name="final_hs_count"/>
-                    <CountColumn idx={idx} intake={groupData.intake_images_count} final={groupData.final_images_count} name="final_images_count"/>
-                    <TextColumn idx={idx} value={groupData.comments} name="comments"/>
+                    <YNColumn bind:groupData idx={idx} defaultTo={defaults.negativesCorrect} value={groupData.correct} name="dpi"/>
+                    <CountColumn bind:groupData idx={idx} name="strip_count"/>
+                    <CountColumn bind:groupData idx={idx} name="hs_count"/>
+                    <CountColumn bind:groupData idx={idx} name="images_count"/>
+                    <TextColumn bind:groupData idx={idx} value={groupData.comments} name="comments"/>
                 </Row>
             {/each}
         {/if}
     {:else}
-        <p class="temp-message">{error ? "No project found with ID {data.id}." : "Loading..."}</p>
+        <p class="temp-message">{error ? `No project with ID ${data.id} exists.` : "Loading..."}</p> 
     {/if}
 </ListContainer>
 
@@ -242,9 +269,6 @@
     }
     .dpi {
         flex: 3 0 3rem;
-    }
-    .corr {
-        flex: 2.5 0 2.5rem;
     }
     .temp-message {
         width: 100%;

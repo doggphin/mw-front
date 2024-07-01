@@ -1,23 +1,26 @@
 <script>
     import { getContext } from 'svelte';
-    import { boolToString } from '$lib/scripts/helpers.js';
+    import { boolToChar } from '$lib/scripts/helpers.js';
     import { widthConsts } from '../widthConsts.js';
     let sendUpdate = getContext('sendGroupUpdate');
-    export let idx, currentValue, updateName;
-    let value = currentValue ?? false;
-</script>
+
+    export let idx, defaultTo, value, name;
+    let width = widthConsts.corr;
+</script>   
 
 
-<input style="flex: {widthConsts.corr} 0 {widthConsts.corr}rem;"
-    on:change={(val) => sendUpdate(idx, updateName, val.target.value)}
-    bind:value={value}
+<input style="flex: {width} 0 {width}rem;"
+    value={value ? value : defaultTo}
+    on:change={(val) => sendUpdate(idx, name, val.target.value)}
 >
 
 
 <style>
     input {
         min-width: 0;
-        background-color: var(--clr-primary-5);
         padding: 2.5px;
+        margin: 0 -2.5px; /* To fix added padding */
+        border-radius: 5px;
+        min-height: 20px;
     }
 </style>
