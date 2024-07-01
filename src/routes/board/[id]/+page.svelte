@@ -36,7 +36,7 @@
     onMount(async () => {
         PageNameStore.set("");
         CurrentMainTab.set();
-        const endpoint = `${BACKENDIP}/projects/${data.id}`;
+        const endpoint = `http://${BACKENDIP}/projects/${data.id}`;
         const response = await fetch(endpoint, {method: "GET"});
         if(response.status == 200) {
             project = await response.json();

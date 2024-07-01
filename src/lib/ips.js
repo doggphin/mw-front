@@ -1,1 +1,1 @@
-export let BACKENDIP = '52.32.9.168:8000';
+export let BACKENDIP = 'localhost:8000';

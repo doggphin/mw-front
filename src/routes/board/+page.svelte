@@ -8,8 +8,10 @@
     onMount(async() => {
         PageNameStore.set("Project Board");
         if($ProjectBoardStore.length === 0) {
-            const endpoint = `${BACKENDIP}/projects/board/`;
+            const endpoint = `http://${BACKENDIP}/projects/board/`;
+            console.log(endpoint);
             const response = await fetch(endpoint, {method: "GET"});
+            console.log(response);
             const data = await response.json();
             ProjectBoardStore.set(data);
         }
