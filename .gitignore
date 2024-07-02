@@ -1,4 +1,4 @@
-*.code-workspace
+mtd_frontend.code-workspace
 .DS_Store
 node_modules
 /build
