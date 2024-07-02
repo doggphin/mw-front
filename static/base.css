@@ -80,6 +80,8 @@ table {
 	--clr-other: #ff1493;
 
 	--border-radius-1: 15px;
+
+	--min-desktop-width: 768px;
 }
 .noselect {
 	-webkit-touch-callout: none; /* iOS Safari */

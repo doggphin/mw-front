@@ -46,17 +46,17 @@
             if(project.hasOwnProperty("slides_job")) {
                 tabsCache.push('Slides');
                 defaults.slidesDpi = project['slides_job']['default_dpi'];
-                defaults.slidesCorrect = boolToChar(project['slides_job']['default_dpi'])
+                defaults.slidesCorrect = boolToChar(project['slides_job']['correct'])
             }
             if(project.hasOwnProperty("prints_job")) {
                 tabsCache.push('Prints');
                 defaults.printsDpi = project['prints_job']['default_dpi'];
-                defaults.printsCorrect = boolToChar(project['prints_job']['default_dpi'])
+                defaults.printsCorrect = boolToChar(project['prints_job']['correct'])
             }
             if(project.hasOwnProperty("negatives_job")) {
                 tabsCache.push('Negatives');
                 defaults.negativesDpi = project['negatives_job']['default_dpi'];
-                defaults.negativesCorrect = boolToChar(['negatives_job']['default_dpi'])
+                defaults.negativesCorrect = boolToChar(['negatives_job']['correct'])
             }
 
             if(tabsCache.length > 0) {
@@ -219,7 +219,7 @@
                 <Row showLine={i < Object.entries(slidesGroups).length - 1} dotted={true}>
                     <div class="idx">{idx}</div>
                     <div class="dpi">{"dpi" in groupData ? groupData["dpi"] : defaults.slidesDpi}</div>
-                    <YNColumn idx={idx} defaultTo={defaults.slidesCorrect} value={groupData.correct} name="dpi"/>
+                    <YNColumn bind:groupData idx={idx} defaultTo={defaults.slidesCorrect} name="correct"/>
                     <CountColumn bind:groupData idx={idx} name="scanner_count"/>
                     <CountColumn bind:groupData idx={idx} name="hs_count"/>
                     <TimerColumn idx={idx} value={"N/A"} name="editing_time"/>
@@ -234,7 +234,7 @@
                 <Row showLine={i < Object.entries(printsGroups).length - 1} dotted={true}>
                     <div class="idx">{idx}</div>
                     <div class="dpi">{"dpi" in groupData ? groupData["dpi"] : defaults.printsDpi}</div>
-                    <YNColumn idx={idx} defaultTo={defaults.printsCorrect} value={groupData.correct} name="dpi"/>
+                    <YNColumn bind:groupData idx={idx} defaultTo={defaults.printsCorrect} name="correct"/>
                     <CountColumn bind:groupData idx={idx} name="lp_count"/>
                     <CountColumn bind:groupData idx={idx} name="hs_count"/>
                     <CountColumn bind:groupData idx={idx} name="oshs_count"/>
@@ -250,11 +250,11 @@
                 <Row showLine={i < Object.entries(negativesGroups).length - 1} dotted={true}>
                     <div class="idx">{idx}</div>
                     <div class="dpi">{"dpi" in groupData ? groupData["dpi"] : defaults.negativesDpi}</div>
-                    <YNColumn bind:groupData idx={idx} defaultTo={defaults.negativesCorrect} value={groupData.correct} name="dpi"/>
+                    <YNColumn bind:groupData idx={idx} defaultTo={defaults.negativesCorrect} name="correct"/>
                     <CountColumn bind:groupData idx={idx} name="strip_count"/>
                     <CountColumn bind:groupData idx={idx} name="hs_count"/>
                     <CountColumn bind:groupData idx={idx} name="images_count"/>
-                    <TextColumn bind:groupData idx={idx} value={groupData.comments} name="comments"/>
+                    <TextColumn bind:groupData idx={idx} name="comments"/>
                 </Row>
             {/each}
         {/if}
