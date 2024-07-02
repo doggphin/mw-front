@@ -92,7 +92,7 @@
         }
     }
 
-    @media only screen and (min-width: 768px) {
+    @media only screen and (min-width: 769px) {
         .backdrop {
             position: fixed;
             top: 0;

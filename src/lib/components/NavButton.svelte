@@ -45,7 +45,7 @@
         }
     }
 
-    @media only screen and (min-width: 768px) {
+    @media only screen and (min-width: 769px) {
         .container {
             display: flex;
             margin: 0px 10px 10px 10px;
