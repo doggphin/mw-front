@@ -47,11 +47,11 @@
             background-color: var(--clr-primary-5);
         }
         nav {
-            position: fixed;
+            position: absolute;
             display: flex;
             justify-content: left;
             background-color: var(--clr-primary-1);
-            width: 100vw;
+            width: 100%;
             height: 50px;
         }
         .logo-space {
@@ -61,7 +61,7 @@
             display: none;
         }
         .backdrop {
-            position: fixed;
+            position: absolute;
             top: 0;
             bottom: 0;
             right: 0;
@@ -71,7 +71,7 @@
         }
         .header {
             width: 100%;
-            position: fixed;
+            position: absolute;
             top: 50px;
             background-color: white;
             width: 100vw;

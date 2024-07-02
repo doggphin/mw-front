@@ -1,7 +1,7 @@
 <script>
     import { PageNameStore, CurrentMainTab, ProjectWebsocket } from '$lib/scripts/mtd-store.js';
     import { boolToChar, getRandom } from '$lib/scripts/helpers.js';
-    import { BACKENDIP } from '$lib/ips.js';
+    import { HTTPBACKENDIP, WSBACKENDIP } from '$lib/ips.js';
     import { widthConsts } from './widthConsts.js';
     import { setContext, onMount, onDestroy } from 'svelte';
 
@@ -36,7 +36,7 @@
     onMount(async () => {
         PageNameStore.set("");
         CurrentMainTab.set();
-        const endpoint = `http://${BACKENDIP}/projects/${data.id}`;
+        const endpoint = `${HTTPBACKENDIP}/projects/${data.id}`;
         const response = await fetch(endpoint, {method: "GET"});
         if(response.status == 200) {
             project = await response.json();
@@ -108,7 +108,7 @@
     if($ProjectWebsocket != null) {
         $ProjectWebsocket.close();
     }
-    ProjectWebsocket.set(new WebSocket(`ws://${BACKENDIP}/ws/project/${data.id}/`));
+    ProjectWebsocket.set(new WebSocket(`${WSBACKENDIP}/ws/project/${data.id}/`));
 
     $ProjectWebsocket.onclose = (e) => {
         console.log('Websocket connection closed!');
