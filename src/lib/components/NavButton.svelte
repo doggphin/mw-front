@@ -18,19 +18,27 @@
 <style>
     @media only screen and (max-width: 768px) {
         .container {
-            display: flex;
-            margin: 0px 10px 10px 10px;
-            padding: 5px 20px 5px 0px;
+            justify-content: center;
             height: 40px;
+            width: 40px;
             color: var(--text-color-1);
             border-radius: 15px;
-            text-decoration: none;
+            margin: auto 0 auto 10px;
+            position: relative;
+        }
+        .image-container {
+            position: absolute;
+            width: 75%;
+            height: 75%;
+            margin: auto;
+            top:0; right:0; bottom:0; left:0;
+        }
+        img {
+            width: 100%;
+            height: 100%;
         }
         .container:hover {
             background-color: var(--clr-primary-1-1);
-        }
-        .image-container {
-            margin: auto 0px auto 15px;
         }
         .text-container {
             display: none;

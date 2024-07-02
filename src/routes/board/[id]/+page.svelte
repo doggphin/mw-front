@@ -257,6 +257,8 @@
                     <TextColumn bind:groupData idx={idx} name="comments"/>
                 </Row>
             {/each}
+        {:else}
+            <p class="temp-message">{"There's no media assigned to this project yet."}</p> 
         {/if}
     {:else}
         <p class="temp-message">{error ? `No project with ID ${data.id} exists.` : "Loading..."}</p> 

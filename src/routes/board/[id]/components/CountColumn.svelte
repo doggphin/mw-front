@@ -24,6 +24,13 @@
         return "red";
     }
     $: color = getColor(groupData[finalId], groupData[intakeId]);
+    $: if(groupData) {
+        // If websocket sets value to 0, it should be replaced with an empty string (to display the placeholder value)
+        if(groupData[finalId] === 0) {
+            groupData[finalId] = '';
+            groupData = groupData;
+        }
+    }
 
     function updateCount(value) {
         let targetStr = value.target.value.toString();
@@ -39,7 +46,7 @@
         } else {
             groupData[finalId] = resultStr;
         }
-        addGroupUpdate(idx, finalId, result);
+        addGroupUpdate(idx, finalId, result ? result : 0);
         getColor(groupData[finalId], groupData[intakeId]);
         color = "var(--clr-primary-5)";
     }
