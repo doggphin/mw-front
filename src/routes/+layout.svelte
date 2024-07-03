@@ -64,18 +64,15 @@
             z-index: 50;
         }
         .header {
-            width: 100%;
             position: fixed;
+            display: flex;
             top: 50px;
             left: 0px;
             right: 0px;
-            background-color: white;
-            width: 100vw;
             height: 50px;
+            background-color: white;
             border-bottom: calc(var(--gap-listcontainer) / 2);
             border-bottom: var(--border-size-med) solid var(--clr-primary-5-1);
-            display: flex;
-            container-type: inline-size;
             z-index: 50;
         }
         .logo-space {
