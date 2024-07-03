@@ -43,21 +43,42 @@
 
 <style>
     @media only screen and (max-width: 768px) {
+        .page {
+            display: fixed;
+            right: 0px;
+            left: 0px;
+            top: 0px;
+        }
         :root {
             background-color: var(--clr-primary-5);
         }
         nav {
-            position: absolute;
+            position: fixed;
             display: flex;
             justify-content: left;
             background-color: var(--clr-primary-1);
-            width: 100%;
             height: 50px;
+            left: 0px;
+            right: 0px;
+            top: 0px;
+            z-index: 50;
+        }
+        .header {
+            width: 100%;
+            position: fixed;
+            top: 50px;
+            left: 0px;
+            right: 0px;
+            background-color: white;
+            width: 100vw;
+            height: 50px;
+            border-bottom: calc(var(--gap-listcontainer) / 2);
+            border-bottom: var(--border-size-med) solid var(--clr-primary-5-1);
+            display: flex;
+            container-type: inline-size;
+            z-index: 50;
         }
         .logo-space {
-            /*display: flex;
-            width: 50px;
-            height: 50px;*/
             display: none;
         }
         .backdrop {
@@ -68,18 +89,6 @@
             left: 0;
             background: rgba(0,0,0,0.50);
             border: none;
-        }
-        .header {
-            width: 100%;
-            position: absolute;
-            top: 50px;
-            background-color: white;
-            width: 100vw;
-            height: 50px;
-            border-bottom: calc(var(--gap-listcontainer) / 2);
-            border-bottom: var(--border-size-med) solid var(--clr-primary-5-1);
-            display: flex;
-            container-type: inline-size;
         }
         .page-name {
             margin: auto 0px auto 20px;
@@ -101,6 +110,7 @@
             left: 0;
             background: rgba(0,0,0,0.50);
             border: none;
+            z-index: 75;
         }
         .page {
             display: flex;

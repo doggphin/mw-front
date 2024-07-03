@@ -3,16 +3,15 @@
     import { boolToChar } from '$lib/scripts/helpers.js';
     import { widthConsts } from '../widthConsts.js';
     let sendUpdate = getContext('sendGroupUpdate');
-
+    /*    on:change={} (val) => sendUpdate(idx, name, val.target.value)*/
     export let idx, defaultTo, name, groupData;
-    console.log(defaultTo);
+    // console.log(defaultTo);
     let width = widthConsts.corr;
 </script>   
 
 
 <input style="flex: {width} 0 {width}rem;"
     value={groupData[name] ?? defaultTo}
-    on:change={(val) => sendUpdate(idx, name, val.target.value)}
 >
 
 

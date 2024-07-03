@@ -9,9 +9,7 @@
         PageNameStore.set("Project Board");
         if($ProjectBoardStore.length === 0) {
             const endpoint = `${HTTPBACKENDIP}/projects/board/`;
-            console.log(endpoint);
             const response = await fetch(endpoint, {method: "GET"});
-            console.log(response);
             const data = await response.json();
             ProjectBoardStore.set(data);
         }

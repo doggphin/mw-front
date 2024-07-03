@@ -12,11 +12,11 @@
     function openTimerModal() {
         openModal(Modal, { title: "Alert", message: "This is an alert" })
     }
+    /*         on:change={(val) => sendUpdate(idx, name, val.target.value)} */
 </script>
 
 <div class="container" style="flex: {width} 0 {width}rem;">
     <input
-        on:change={(val) => sendUpdate(idx, name, val.target.value)}
         value={value ?? ""}
     >
 
