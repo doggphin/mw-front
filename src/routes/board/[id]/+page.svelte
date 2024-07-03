@@ -180,8 +180,8 @@
                 "DPI" : widthConsts.dpi,  
                 "Corr." : widthConsts.corr, 
                 "Strips" : widthConsts.number,
-                "HS" : widthConsts.number,
                 "Count" : widthConsts.number,
+                "HS" : widthConsts.number,
                 "Comments" : widthConsts.comments
             }
         },
@@ -252,8 +252,8 @@
                     <div class="dpi">{"dpi" in groupData ? groupData["dpi"] : defaults.negativesDpi}</div>
                     <YNColumn bind:groupData idx={idx} defaultTo={defaults.negativesCorrect} name="correct"/>
                     <CountColumn bind:groupData idx={idx} name="strip_count"/>
-                    <CountColumn bind:groupData idx={idx} name="hs_count"/>
                     <CountColumn bind:groupData idx={idx} name="images_count"/>
+                    <CountColumn bind:groupData idx={idx} name="hs_count"/>
                     <TextColumn bind:groupData idx={idx} name="comments"/>
                 </Row>
             {/each}

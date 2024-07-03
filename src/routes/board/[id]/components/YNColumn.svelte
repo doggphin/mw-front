@@ -11,7 +11,7 @@
 
 
 <input style="flex: {width} 0 {width}rem;"
-    value={groupData[name] ?? defaultTo}
+    value={boolToChar(groupData[name]) ?? defaultTo}
 >
 
 
