@@ -1,10 +1,9 @@
 <script>
     import { PageNameStore, CurrentMainTab, ProjectWebsocket } from '$lib/scripts/mtd-store.js';
     import { boolToChar, getRandom } from '$lib/scripts/helpers.js';
-    import { HTTPBACKENDIP, WSBACKENDIP } from '$lib/ips.js';
+    import { PUBLIC_IP_HTTP_BACKEND, PUBLIC_IP_WS_BACKEND } from '$env/static/public';
     import { widthConsts } from './widthConsts.js';
     import { setContext, onMount, onDestroy } from 'svelte';
-
     import ListContainer from '$lib/components/ListContainer.svelte';
     import Row from './components/Row.svelte';
     import TitleRow from './components/TitleRow.svelte';
@@ -12,10 +11,9 @@
     import CountColumn from './components/CountColumn.svelte';
     import TextColumn from './components/TextColumn.svelte';
     import TimerColumn from './components/TimerColumn.svelte';
+    import ComputeColumn from './components/ComputeColumn.svelte';
 
     export let data;    // Gets page number from page.js
-
-    /// IMPORT DATA ///
 
     let error = 0;
     let tabsCache = [];
@@ -27,16 +25,14 @@
         negativesDpi : 1500,
         negativesCorrect : "N"
     };
-
     $: slidesGroups = project?.["slides_job"]?.["groups"];
     $: printsGroups = project?.["prints_job"]?.["groups"];
     $: negativesGroups = project?.["negatives_job"]?.["groups"];
-
     let project;
     onMount(async () => {
         PageNameStore.set("");
         CurrentMainTab.set();
-        const endpoint = `${HTTPBACKENDIP}/projects/${data.id}`;
+        const endpoint = `${PUBLIC_IP_HTTP_BACKEND}/projects/${data.id}`;
         const response = await fetch(endpoint, {method: "GET"});
         if(response.status == 200) {
             project = await response.json();
@@ -68,7 +64,6 @@
         }
     });
 
-    /// WEBSOCKETS ///
 
     let myIdentifierToken = getRandom(-2147483648, 2147483647);
     let groupUpdateQueue = {
@@ -97,27 +92,22 @@
         }
     }
     setInterval(sendUpdate, 500);
-    setContext("addGroupUpdate", addGroupUpdate);
-
+    setContext("addGroupUpdate", addGroupUpdate); 
     onDestroy(() => {       // Close websocket when going to another page
         if($ProjectWebsocket.readyState === 1) {
             $ProjectWebsocket.close();
         }
     })
-
     if($ProjectWebsocket != null) {
         $ProjectWebsocket.close();
     }
-    ProjectWebsocket.set(new WebSocket(`${WSBACKENDIP}/ws/project/${data.id}/`));
-
+    ProjectWebsocket.set(new WebSocket(`${PUBLIC_IP_WS_BACKEND}/ws/project/${data.id}/`));
     $ProjectWebsocket.onclose = (e) => {
         console.log('Websocket connection closed!');
     };
-
     $ProjectWebsocket.onopen = (e) => {
         console.log("Websocket connection opened!");
     };
-
     $ProjectWebsocket.onmessage = (event) => {
         try {
             const msg = (JSON.parse(event.data))['message'];
@@ -139,17 +129,11 @@
                     negativesGroups[msg['idx']][msg['col']] = msg['val'];
                     break;
             }
-            /*if(photoJob) {
-                photoJob[msg['idx']][msg['col']] = msg['val'];
-            } else {
-                console.error(`Unrecognized socket message where job = ${msg['job']}`);
-            }*/
         } catch(Error) {
             error("Error reading websocket message.");
         }
     };
 
-    /// WIDTHS ///
 
     let widths = {
         get slides() {
@@ -160,7 +144,8 @@
                 "Scan" : widthConsts.number,
                 "HS" : widthConsts.number,
                 "Editing" : widthConsts.timer,
-                "Comments" : widthConsts.comments
+                "Comments" : widthConsts.comments,
+                "" : widthConsts.compute
             }
         },
         get prints() {
@@ -197,7 +182,6 @@
             return res;
         }
     }
-
     let listContainerMinWidthRem = 0;
     let listContainerMinWidthPx = 0;
     $: $CurrentMainTab, setWidths()
@@ -224,6 +208,7 @@
                     <CountColumn bind:groupData idx={idx} name="hs_count"/>
                     <TimerColumn idx={idx} value={"N/A"} name="editing_time"/>
                     <TextColumn bind:groupData idx={idx} name="comments"/>
+                    <ComputeColumn project_id = {data.id} group_idx={idx} media_type="slides"/>
                 </Row>
             {/each}
         {:else if $CurrentMainTab == "Prints"}
@@ -240,7 +225,6 @@
                     <CountColumn bind:groupData idx={idx} name="oshs_count"/>
                     <TextColumn bind:groupData idx={idx} name="comments"/>
                 </Row>
-
             {/each}
         {:else if $CurrentMainTab == "Negatives"}
             <Row>

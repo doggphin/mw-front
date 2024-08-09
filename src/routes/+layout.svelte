@@ -6,6 +6,7 @@
     import FolderImage from '$lib/assets/folder_open_24dp_FILL0_wght400_GRAD0_opsz24.svg';
     import ListImage from '$lib/assets/view_list_24dp_FILL0_wght400_GRAD0_opsz24.svg';
     import AddImage from '$lib/assets/add_circle_24dp_FILL0_wght400_GRAD0_opsz24.svg';
+    import DnsImage from '$lib/assets/dns_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg';
     import HubImage from '$lib/assets/hub_24dp_FILL0_wght400_GRAD0_opsz24.svg';
     import Logo from '$lib/assets/logo.svg';
 
@@ -18,7 +19,7 @@
             <img src={Logo} alt="Alt text" />
         </a>
         <NavButton text="Project Board" iconSrc={ListImage} link="/board/"/>
-        <NavButton text="My Projects" iconSrc={FolderImage} link="/board/myprojects/"/>
+        <NavButton text="Servers" iconSrc={DnsImage} link="/servers/"/>
         <NavButton text="New Project" iconSrc={AddImage} link="/newproject/"/>
         <NavButton text="(Test) Xero" iconSrc={HubImage} link="/clients/"/>
     </nav>

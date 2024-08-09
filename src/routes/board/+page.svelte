@@ -1,6 +1,6 @@
 <script>
     import {PageNameStore, ProjectBoardStore } from '$lib/scripts/mtd-store.js';
-    import { HTTPBACKENDIP } from '$lib/ips.js';
+    import { PUBLIC_IP_HTTP_BACKEND } from '$env/static/public';
     import {onMount} from 'svelte';
     import ListContainer from "$lib/components/ListContainer.svelte";
     import ListContainerLineBreak from "$lib/components/ListContainerLineBreak.svelte";
@@ -8,7 +8,7 @@
     onMount(async() => {
         PageNameStore.set("Project Board");
         if($ProjectBoardStore.length === 0) {
-            const endpoint = `${HTTPBACKENDIP}/projects/board/`;
+            const endpoint = `${PUBLIC_IP_HTTP_BACKEND}/projects/board/`;
             const response = await fetch(endpoint, {method: "GET"});
             const data = await response.json();
             ProjectBoardStore.set(data);

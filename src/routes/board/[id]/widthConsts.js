@@ -6,4 +6,6 @@ export let widthConsts = {
     number: 2.5,
     timer: 3,
     comments: 7,
+
+    compute: 1
 }

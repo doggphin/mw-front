@@ -7,8 +7,6 @@
     let width = widthConsts.timer;
 
     import { openModal } from 'svelte-modals'
-    import Modal from './Modal.svelte'
-
     function openTimerModal() {
         openModal(Modal, { title: "Alert", message: "This is an alert" })
     }
