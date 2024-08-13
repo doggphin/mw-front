@@ -18,7 +18,13 @@
             'job' : string: "final_check"
         }
         */
-        $WorkerWebsocket.send(JSON.stringify({"job" : "final_check"}));
+        let request = {"job" : "final_check"};
+        $WorkerWebsocket.send(JSON.stringify(request));
+        // Send this message to self to parse faster
+        parseMessage({'msg' : 'Running final check...', 'status' : 'busy'});
+    }
+    function autoFillFields() {
+        parseMessage({'msg' : 'This hasn\'t been implemented yet!', 'status' : ''});
     }
     $WorkerWebsocket.onopen = (e) => {
         currentMessage = "opened";
@@ -32,46 +38,66 @@
         //      'msg' : string,
         //      'status' : string: "success" | "busy" | "failure" | ""
         // }
-        let received = JSON.parse(event.data);
-        console.log(received);
-        let message = received['msg']??"error: no attached message in response";
+        let message = JSON.parse(event.data);
+        console.log(message);
+        parseMessage(message);
+    }
+    function parseMessage(message) {
+        let text = message['msg']??"error: no attached message in response";
         let color = "black";
-        switch(received['status']??"") {
+        switch(message['status']??"") {
             case "success":
-                color = "green";
+                color = "var(--clr-primary-good-1)";
                 break;
             case "busy":
-                color = "blue";
+                color = "var(--clr-primary-thinking-1)";
                 break;
             case "failure":
-                color = "red";
+                color = "var(--clr-primary-bad-1)";
                 break;
             default:
                 break;
         }
         currentMessage = {
-            msg : message,
+            msg : text,
             color : color
         };
-        console.log(currentMessage.color);
     }
 </script>
 
 {#if isOpen}
     <div role="dialog" class="modal">
         <div class="contents">
-            <div style="color: {currentMessage.color}">
-                {currentMessage.msg}
+            <div class="message-box" style="color: {currentMessage.color};">
+                <div class="this">
+                    {currentMessage.msg}
+                </div>
             </div>
             <button on:click={finalCheck}>Final Check</button>
-            <div class="actions">
-                <button on:click={closeModal}></button>
-            </div>
+            <button on:click={autoFillFields}>Auto Fill Fields</button>
+            <button on:click={closeModal}>Close</button>
         </div>
     </div>
 {/if}
 
 <style>
+    .this {
+        font-weight: 600;
+    }
+    .message-box {
+        margin: 10px;
+        text-align: center;
+    }
+    .contents {
+      width: 400px;
+      border-radius: 6px;
+      padding: 16px;
+      background: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      pointer-events: auto;
+    }
     .modal {
         z-index: 101;
         position: fixed;
@@ -86,14 +112,7 @@
         /* allow click-through to backdrop */
         pointer-events: none;
     } 
-    .contents {
-      min-width: 240px;
-      border-radius: 6px;
-      padding: 16px;
-      background: white;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      pointer-events: auto;
+    button {
+        margin: 10px 0;
     }
 </style>

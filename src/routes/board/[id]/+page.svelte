@@ -5,6 +5,7 @@
     import { widthConsts } from './widthConsts.js';
     import { setContext, onMount, onDestroy } from 'svelte';
     import ListContainer from '$lib/components/ListContainer.svelte';
+    import TempMessage from '$lib/components/TempMessage.svelte';
     import Row from './components/Row.svelte';
     import TitleRow from './components/TitleRow.svelte';
     import YNColumn from './components/YNColumn.svelte';
@@ -245,7 +246,7 @@
             <p class="temp-message">{"There's no media assigned to this project yet."}</p> 
         {/if}
     {:else}
-        <p class="temp-message">{error ? `No project with ID ${data.id} exists.` : "Loading..."}</p> 
+        <TempMessage message={error ? `No project with ID ${data.id} exists.` : "Loading..."} />
     {/if}
 </ListContainer>
 
@@ -256,10 +257,5 @@
     }
     .dpi {
         flex: 3 0 3rem;
-    }
-    .temp-message {
-        width: 100%;
-        text-align: center;
-        padding: 20px 0px;
     }
 </style>

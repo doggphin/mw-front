@@ -59,8 +59,13 @@ table {
 	--clr-primary-5-2: #B6B6B9;
 
 	--clr-primary-good: #a9deac;
+	--clr-primary-good-1: #32a438;
+	--clr-primary-thinking: #a9b5de;
+	--clr-primary-thinking-1: #294cc0;
 	--clr-primary-bad: #dea9ad;
-	--clr-primary-warning: #e9eba2;
+	--clr-primary-bad-1: #b54b54;
+	--clr-primary-warning: #eaeeaa;
+	--clr-primary-warning-1: #dbe12c;
 
 	--gap-small: 20px;
 	--gap-listcontainer: 20px;

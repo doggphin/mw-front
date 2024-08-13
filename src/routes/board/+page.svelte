@@ -4,6 +4,7 @@
     import {onMount} from 'svelte';
     import ListContainer from "$lib/components/ListContainer.svelte";
     import ListContainerLineBreak from "$lib/components/ListContainerLineBreak.svelte";
+    import TempMessage from "$lib/components/TempMessage.svelte";
 
     onMount(async() => {
         PageNameStore.set("Project Board");
@@ -18,34 +19,38 @@
 
 
 <ListContainer minWidthRem=40>
-    <div class="listing">
-        <div>Name</div>
-        <div>Media</div>
-        <div>Due By</div>
-        <div>Status</div>
-    </div>
-    <ListContainerLineBreak />
-    {#each $ProjectBoardStore as projectListing, idx}
+    {#if $ProjectBoardStore.length > 0}
         <div class="listing">
-            <div class="listing-info">
-                <a href="/board/{projectListing.id}">{projectListing.client_name_last}, {projectListing.client_name_first}</a>
-            </div>
-            <ol class="media-container">
-                {#each projectListing.media_types as mediaType}
-                    <li class="media">{mediaType}</li>
-                {/each}
-            </ol>       
-            <div class="listing-info">
-                <p title="Taken in on {projectListing.date_in_formatted}" style="{projectListing.is_hard_due ? "color:red;font-weight:bold" : ""}">
-                    <u>{projectListing.date_due_formatted}</u>
-                </p>
-            </div>
-            <div class="listing-info">{projectListing.comments}</div>
+            <div>Name</div>
+            <div>Media</div>
+            <div>Due By</div>
+            <div>Status</div>
         </div>
-        {#if idx < $ProjectBoardStore.length - 1}
-            <ListContainerLineBreak dotted={true}/>
-        {/if}
-    {/each}
+        <ListContainerLineBreak />
+        {#each $ProjectBoardStore as projectListing, idx}
+            <div class="listing">
+                <div class="listing-info">
+                    <a href="/board/{projectListing.id}">{projectListing.client_name_last}, {projectListing.client_name_first}</a>
+                </div>
+                <ol class="media-container">
+                    {#each projectListing.media_types as mediaType}
+                        <li class="media">{mediaType}</li>
+                    {/each}
+                </ol>       
+                <div class="listing-info">
+                    <p title="Taken in on {projectListing.date_in_formatted}" style="{projectListing.is_hard_due ? "color:red;font-weight:bold" : ""}">
+                        <u>{projectListing.date_due_formatted}</u>
+                    </p>
+                </div>
+                <div class="listing-info">{projectListing.comments}</div>
+            </div>
+            {#if idx < $ProjectBoardStore.length - 1}
+                <ListContainerLineBreak dotted={true}/>
+            {/if}
+        {/each}
+    {:else}
+        <TempMessage message="Loading..."/>
+    {/if}
 </ListContainer>
 
 
