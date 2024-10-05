@@ -2,22 +2,21 @@
     import { getContext } from 'svelte';
     import { widthConsts } from '../widthConsts.js';
     import Timer from "$lib/assets/timer_24dp_FILL0_wght400_GRAD0_opsz24.svg";
-
-    export let idx, value, name;
+    export let idx, name, groupData;
     let width = widthConsts.timer;
 
     import { openModal } from 'svelte-modals'
+    import EditingModal from "./EditingModal.svelte";
     function openTimerModal() {
-        openModal(Modal, { title: "Alert", message: "This is an alert" })
+        openModal(EditingModal, { idx: idx, name: name, groupData: groupData })
     }
     /*         on:change={(val) => sendUpdate(idx, name, val.target.value)} */
 </script>
 
 <div class="container" style="flex: {width} 0 {width}rem;">
     <input
-        value={value ?? ""}
+        value="NA"
     >
-
     <button class="timer-container" src={Timer} alt="Timer Icon" on:click={openTimerModal}>
         <img style="width:100%; height:100%; background-color: none;" src={Timer} alt="Timer Icon"/>
     </button>

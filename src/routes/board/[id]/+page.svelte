@@ -9,9 +9,10 @@
     import Row from './components/Row.svelte';
     import TitleRow from './components/TitleRow.svelte';
     import YNColumn from './components/YNColumn.svelte';
+    import DpiColumn from './components/DpiColumn.svelte';
     import CountColumn from './components/CountColumn.svelte';
     import TextColumn from './components/TextColumn.svelte';
-    import TimerColumn from './components/TimerColumn.svelte';
+    import EditingColumn from './components/EditingColumn.svelte';
     import ComputeColumn from './components/ComputeColumn.svelte';
 
     export let data;    // Gets page number from page.js
@@ -65,12 +66,14 @@
         }
     });
 
-
+    // An identifier token is attached to modification requests to (until profiles are set up) determine what session sent it.
+    // If a frontend session receives an update, if it came from themselves, it is ignored.
     let myIdentifierToken = getRandom(-2147483648, 2147483647);
     let groupUpdateQueue = {
         'token': myIdentifierToken,
         'data': []
     };
+    // Adds an update to append to the list of updates to intermittently send to the server.
     function addGroupUpdate(idx, col, val) {
         // Try to replace any previous updates with this update if possible
         for(let i=0; i<groupUpdateQueue.data.length; i++) {         
@@ -203,11 +206,11 @@
             {#each Object.entries(slidesGroups || {}) as [idx, groupData], i}
                 <Row showLine={i < Object.entries(slidesGroups).length - 1} dotted={true}>
                     <div class="idx">{idx}</div>
-                    <div class="dpi">{"dpi" in groupData ? groupData["dpi"] : defaults.slidesDpi}</div>
+                    <DpiColumn bind:groupData idx={idx} defaultTo={defaults.slidesDpi} options={[1250, 2500, 5000]} name="dpi"/>
                     <YNColumn bind:groupData idx={idx} defaultTo={defaults.slidesCorrect} name="correct"/>
                     <CountColumn bind:groupData idx={idx} name="scanner_count"/>
                     <CountColumn bind:groupData idx={idx} name="hs_count"/>
-                    <TimerColumn idx={idx} value={"N/A"} name="editing_time"/>
+                    <EditingColumn idx={idx} value={"N/A"} name="editing_time"/>
                     <TextColumn bind:groupData idx={idx} name="comments"/>
                     <ComputeColumn project_id = {data.id} group_idx={idx} media_type="slides"/>
                 </Row>
@@ -219,7 +222,7 @@
             {#each Object.entries(printsGroups || {}) as [idx, groupData], i}
                 <Row showLine={i < Object.entries(printsGroups).length - 1} dotted={true}>
                     <div class="idx">{idx}</div>
-                    <div class="dpi">{"dpi" in groupData ? groupData["dpi"] : defaults.printsDpi}</div>
+                    <DpiColumn bind:groupData idx={idx} defaultTo={defaults.printsDpi} options={[300, 600, 1200]} name="dpi"/>
                     <YNColumn bind:groupData idx={idx} defaultTo={defaults.printsCorrect} name="correct"/>
                     <CountColumn bind:groupData idx={idx} name="lp_count"/>
                     <CountColumn bind:groupData idx={idx} name="hs_count"/>
@@ -234,7 +237,7 @@
             {#each Object.entries(negativesGroups || {}) as [idx, groupData], i}
                 <Row showLine={i < Object.entries(negativesGroups).length - 1} dotted={true}>
                     <div class="idx">{idx}</div>
-                    <div class="dpi">{"dpi" in groupData ? groupData["dpi"] : defaults.negativesDpi}</div>
+                    <DpiColumn bind:groupData idx={idx} defaultTo={defaults.negativesDpi} options={[1250, 1500, 2500, 3000, 4000, 5000]} name="dpi"/>
                     <YNColumn bind:groupData idx={idx} defaultTo={defaults.negativesCorrect} name="correct"/>
                     <CountColumn bind:groupData idx={idx} name="strip_count"/>
                     <CountColumn bind:groupData idx={idx} name="images_count"/>
