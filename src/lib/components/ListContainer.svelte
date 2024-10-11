@@ -4,6 +4,8 @@
     export let minWidthRem = 0;
     export let minWidthPx = 0;
     export let tabs = [];
+    export let addFunction = null;  // Function should have the form func(args : args = null)
+    export let removeFunction = null;   // Function should have the form func(args : any = null)
 
     function setTab(tabName) {
         CurrentMainTab.set(tabName["tab"]);
