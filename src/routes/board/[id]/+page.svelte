@@ -8,7 +8,9 @@
     import TempMessage from '$lib/components/TempMessage.svelte';
     import Row from './components/Row.svelte';
     import ListContainerLineBreak from "$lib/components/ListContainerLineBreak.svelte";
+    import TrashColumn from "./components/TrashColumn.svelte";
     import TitleRow from './components/TitleRow.svelte';
+    import IndexColumn from './components/IndexColumn.svelte';
     import YNColumn from './components/YNColumn.svelte';
     import DpiColumn from './components/DpiColumn.svelte';
     import CountColumn from './components/CountColumn.svelte';
@@ -28,55 +30,98 @@
         negativesDpi : 1500,
         negativesCorrect : "N"
     };
+    function getMaxGroupNumber(groups) {
+        if(!groups) {
+            return 0;
+        }
+        return Math.max(...groups.maxPrintsGroupNumber(o => o['group_number']))
+    }
     $: slidesGroups = project?.["slides_job"]?.["groups"];
     $: printsGroups = project?.["prints_job"]?.["groups"];
     $: negativesGroups = project?.["negatives_job"]?.["groups"];
+    $: maxGroupNumbers = {
+        "slides" : 0,
+        "prints" : 0,
+        "negatives" : 0
+    }
+
     let project;
 
-    // Requests this project from the database
-    async function getProjectData() {
+    let job_dict = {
+            "slides_job" : {
+                TAB_NAME : "Slides",
+                SHORT_NAME : "slides",
+            },
+            "prints_job" : {
+                TAB_NAME : "Prints",
+                SHORT_NAME : "prints"
+            },
+            "negatives_job" : {
+                TAB_NAME : "Negatives",
+                SHORT_NAME : "negatives"
+            }
+        }
+    
+    function tabNameToJobName(tabName) {
+        console.log(`converting ${tabName}`);
+        for(const [key, value] of Object.entries(job_dict)) {
+            if(value['TAB_NAME'] == tabName) {
+                return key;
+            }
+        }
+        return null;
+    }
+
+    function sortJobsByGroupNumber(resetTab = false) {
+        for(const [key, value] of Object.entries(job_dict)) {
+            // If project contains this job,
+            if(project.hasOwnProperty(key)) {
+                if(resetTab) {
+                    tabsCache.push(value["TAB_NAME"]);
+                }
+
+                // Sort received groups in each job type not only to display correctly, but also find the max group number value for each job
+                project[key]["groups"].sort((a, b) => {
+                    if (a["group_number"] < b["group_number"]) {
+                        return -1
+                    }
+                    if (a["group_number"] > b["group_number"]) {
+                        return 1;
+                    }
+                    return 0;
+                });
+
+                // Set the max group number for this job to 0 if no groups exist; otherwise find the max
+                maxGroupNumbers[value["SHORT_NAME"]] = project[key]["groups"].length > 0 ?
+                    project[key]["groups"].at(-1)["group_number"] :
+                    0
+                maxGroupNumbers = maxGroupNumbers; // Update page
+
+                project = project;
+            }
+        }
+    }
+    setContext("sortJobsByGroupNumber", sortJobsByGroupNumber);
+
+    // Requests this project's jobs from the database
+    async function getProjectData(resetTab = true) {
+        if(resetTab) {
+            tabsCache = [];
+        }
         const endpoint = `${PUBLIC_IP_HTTP_BACKEND}/projects/${data.id}`;
         const response = await fetch(endpoint, {method: "GET"});
         if(response.status == 200) {
             project = await response.json();
+
             PageNameStore.set(project["formatted_project_name"]);
-            
-            // Function for sorting a job by ID.
-            function compareGroups(a, b) {
-                if (a["group_number"] < b["group_number"]) {
-                    return -1
-                }
-                if (a["group_number"] > b["group_number"]) {
-                    return 1;
-                }
-                return 0;
-            }
 
-            // REWRITE THIS
-            if(project.hasOwnProperty("slides_job")) {
-                tabsCache.push('Slides');
-                defaults.slidesDpi = project['slides_job']['default_dpi'];
-                defaults.slidesCorrect = boolToChar(project['slides_job']['correct'])
-                project["slides_job"]["groups"].sort(compareGroups);
-            }
-            if(project.hasOwnProperty("prints_job")) {
-                tabsCache.push('Prints');
-                defaults.printsDpi = project['prints_job']['default_dpi'];
-                defaults.printsCorrect = boolToChar(project['prints_job']['correct'])
-                project["prints_job"]["groups"].sort(compareGroups);
-            }
-            if(project.hasOwnProperty("negatives_job")) {
-                tabsCache.push('Negatives');
-                defaults.negativesDpi = project['negatives_job']['default_dpi'];
-                defaults.negativesCorrect = boolToChar(['negatives_job']['correct'])
-                project["negatives_job"]["groups"].sort(compareGroups);
-            }
+            sortJobsByGroupNumber(resetTab);
 
-            if(tabsCache.length > 0) {
+            if(tabsCache.length > 0 && resetTab) {
                 CurrentMainTab.set(tabsCache[0]);
             }
         } else {
-            PageNameStore.set("Project does not exist");
+            PageNameStore.set("Error retrieving project");
             error = 1;
         }
     }
@@ -103,9 +148,7 @@
     function addGroupUpdate(idx, col, val) {
         // Try to replace any previous updates with this update if possible
         for(let i=0; i<groupUpdateQueue.data.updates.length; i++) {         
-            if($CurrentMainTab == groupUpdateQueue.data.updates[i].job
-            && idx === groupUpdateQueue.updates.data[i].idx
-            && col === groupUpdateQueue.updates.data[i].col) {
+            if($CurrentMainTab == groupUpdateQueue.data.updates[i].job && idx === groupUpdateQueue.data.updates[i].idx && col === groupUpdateQueue.data.updates[i].col) {
                 groupUpdateQueue.data.updates[i].val = val;
                 return;
             }
@@ -126,8 +169,28 @@
             groupUpdateQueue.data.updates = [];
         }
     }
-    // Have this run every 500ms
+    // Send off queued changes every 500ms
     setInterval(sendGroupUpdates, 500);
+
+    function validateChangeGroupNumber(from, to) {
+        if(from == to) {
+            console.log("Trying to change index from and to current. Skipping...");
+            return true;
+        }
+        let jobName = tabNameToJobName($CurrentMainTab);
+        let groups = project[jobName]["groups"];
+        for (const group of groups) {
+            if(group["group_number"] == to) {
+                return false;
+            }
+        }
+        addGroupUpdate(from, "group_number", to);
+        return true;
+
+        // TODO:
+        // might be worthwhile to check through the update queue to check if already trying to change any index values, and if so, don't allow the change to go through
+    }
+    setContext("validateChangeGroupNumber", validateChangeGroupNumber);
 
     // Send a request to the server to insert a group at the specified index
     function sendInsertIdxRequest(idx) {
@@ -141,6 +204,19 @@
         $ProjectWebsocket.send(JSON.stringify(request));
     }
     setContext("sendInsertIdxRequest", sendInsertIdxRequest);
+
+    // Send a request to the server to delete a group with the specified index
+    function sendDeleteIdxRequest(idx) {
+        let request = {
+            "type" : "delete_group",
+            "data" : {
+                "job" : $CurrentMainTab,
+                "idx" : idx
+            }
+        }
+        $ProjectWebsocket.send(JSON.stringify(request));
+    }
+    setContext("sendDeleteIdxRequest", sendDeleteIdxRequest);
 
     if($ProjectWebsocket != null) {
         $ProjectWebsocket.close();
@@ -160,34 +236,41 @@
             switch(event_json['type']) {
 
                 case "projects.update_idx":
+                    console.log(`Receiving an update for ${msg['idx']}`);
                     // If the token on this update is the same as my current token, that means I sent it, so it can be ignored
                     if(msg['token'] === myIdentifierToken) {
                         return;
                     }
-                    let photoJob = null;
+
+                    let idx = msg['idx']
+                    let col = msg['col']
+                    let val = msg['val']
+                    let groups = null;
                     switch(msg['job']) {
                         case 'slides_job':
-                            //photoJob = slidesGroups;
-                            slidesGroups[msg['idx']][msg['col']] = msg['val'];
+                            groups = slidesGroups;
                             break;
                         case 'prints_job':
-                            //photoJob = printsGroups;
-                            printsGroups[msg['idx']][msg['col']] = msg['val'];
+                            groups = printsGroups;
                             break;
                         case 'negatives_job':
-                            //photoJob = negativesGroups;
-                            negativesGroups[msg['idx']][msg['col']] = msg['val'];
+                            groups = negativesGroups;
                             break;
                     }
-                    error("Error reading websocket message : Invalid job!");
+                    let group = groups.find(o => o["group_number"] == idx);
+                    if (group) {
+                        group[col] = val;
+                    } else {
+                        console.log("Error reading websocket message : Invalid job!");
+                    }
                 
                 case "projects.force_update":
-                    getProjectData();
+                    getProjectData(false);
                     break;
             }
             
-        } catch(Error) {
-            error("Error reading websocket message : Unknown error.");
+        } catch(e) {
+            console.log(`Error reading websocket message : ${e}`);
         }
     };
     onDestroy(() => {       // Close websocket when going to another page
@@ -254,6 +337,9 @@
 </script>
 
 
+<div style="position: absolute; background-color: red; width: 10px; height: 10px; right: 20px; top: 30px;">
+
+</div>
 <ListContainer minWidthRem={listContainerMinWidthRem} minWidthPx={listContainerMinWidthPx} tabs={tabsCache}>
     {#if project}
 
@@ -261,12 +347,15 @@
             <ol>
                 <TitleRow titles={widths.slides}/>
             </ol>
-            <ListContainerLineBreak insertAtIdx=1/>
+            {#if maxGroupNumbers["slides"] > 0}
+                <ListContainerLineBreak insertAtIdx=1/>
+            {/if}
             {#each Object.entries(slidesGroups || {}) as [idx, groupData], i}
                 <ol>
-                    <div class="idx">{groupData['group_number']}</div>
-                    <DpiColumn bind:groupData idx={groupData['group_number']} defaultTo={defaults.slidesDpi} options={[1250, 2500, 5000]} name="dpi"/>
-                    <YNColumn bind:groupData idx={groupData['group_number']} defaultTo={defaults.slidesCorrect} name="correct"/>
+                    <TrashColumn idx={groupData['group_number']}/>
+                    <IndexColumn bind:groupData idx={groupData['group_number']} name="group_number"/>
+                    <DpiColumn bind:groupData idx={groupData['group_number']} defaultTo={1250} options={[1250, 2500, 5000]} name="dpi"/>
+                    <YNColumn bind:groupData idx={groupData['group_number']} defaultTo={"N"} name="correct"/>
                     <CountColumn bind:groupData idx={groupData['group_number']} name="scanner_count"/>
                     <CountColumn bind:groupData idx={groupData['group_number']} name="hs_count"/>
                     <EditingColumn bind:groupData idx={groupData['group_number']} value={"N/A"} name="editing_time"/>
@@ -277,17 +366,21 @@
                     <ListContainerLineBreak insertAtIdx={groupData['group_number'] + 1} dotted={true}/>
                 {/if}
             {/each}
+            <ListContainerLineBreak insertAtIdx={maxGroupNumbers["slides"] + 1} endOfContainerInsert = {true}/>
 
         {:else if $CurrentMainTab == "Prints"}
             <ol>
                 <TitleRow titles={widths.prints}/>
             </ol>
-            <ListContainerLineBreak insertAtIdx = 1/>
+            {#if maxGroupNumbers["prints"] > 0}
+                <ListContainerLineBreak insertAtIdx=1/>
+            {/if}
             {#each Object.entries(printsGroups || {}) as [idx, groupData], i}
                 <ol>
-                    <div class="idx">{groupData['group_number']}</div>
-                    <DpiColumn bind:groupData idx={groupData['group_number']} defaultTo={defaults.printsDpi} options={[300, 600, 1200]} name="dpi"/>
-                    <YNColumn bind:groupData idx={groupData['group_number']} defaultTo={defaults.printsCorrect} name="correct"/>
+                    <TrashColumn idx={groupData['group_number']}/>
+                    <IndexColumn bind:groupData idx={groupData['group_number']} name="group_number"/>
+                    <DpiColumn bind:groupData idx={groupData['group_number']} defaultTo={300} options={[300, 600, 1200]} name="dpi"/>
+                    <YNColumn bind:groupData idx={groupData['group_number']} defaultTo={"N"} name="correct"/>
                     <CountColumn bind:groupData idx={groupData['group_number']} name="lp_count"/>
                     <CountColumn bind:groupData idx={groupData['group_number']} name="hs_count"/>
                     <CountColumn bind:groupData idx={groupData['group_number']} name="oshs_count"/>
@@ -297,17 +390,21 @@
                     <ListContainerLineBreak insertAtIdx={groupData['group_number'] + 1} dotted={true}/>
                 {/if}
             {/each}
+            <ListContainerLineBreak insertAtIdx={maxGroupNumbers["prints"] + 1} endOfContainerInsert = {true}/>
 
         {:else if $CurrentMainTab == "Negatives"}
             <ol>
                 <TitleRow titles={widths.negatives}/>
             </ol>
-            <ListContainerLineBreak insertAtIdx = 1/>
+            {#if maxGroupNumbers["negatives"] > 0}
+                <ListContainerLineBreak insertAtIdx=1/>
+            {/if}
             {#each Object.entries(negativesGroups || {}) as [idx, groupData], i}
                 <ol>
-                    <div class="idx">{groupData['group_number']}</div>
-                    <DpiColumn bind:groupData idx={groupData['group_number']} defaultTo={defaults.negativesDpi} options={[1250, 1500, 2500, 3000, 4000, 5000]} name="dpi"/>
-                    <YNColumn bind:groupData idx={groupData['group_number']} defaultTo={defaults.negativesCorrect} name="correct"/>
+                    <TrashColumn idx={groupData['group_number']}/>
+                    <IndexColumn bind:groupData idx={groupData['group_number']} name="group_number"/>
+                    <DpiColumn bind:groupData idx={groupData['group_number']} defaultTo={1200} options={[1250, 1500, 2500, 3000, 4000, 5000]} name="dpi"/>
+                    <YNColumn bind:groupData idx={groupData['group_number']} defaultTo={"N"} name="correct"/>
                     <CountColumn bind:groupData idx={groupData['group_number']} name="strip_count"/>
                     <CountColumn bind:groupData idx={groupData['group_number']} name="images_count"/>
                     <CountColumn bind:groupData idx={groupData['group_number']} name="hs_count"/>
@@ -317,6 +414,7 @@
                     <ListContainerLineBreak insertAtIdx={groupData['group_number'] + 1} dotted={true}/>
                 {/if}
             {/each}
+            <ListContainerLineBreak insertAtIdx={maxGroupNumbers["negatives"] + 1} endOfContainerInsert = {true}/>
 
         {:else}
             <p class="temp-message">{"There's no media assigned to this project yet."}</p> 

@@ -111,3 +111,16 @@ h3 {
 .photos {
 	background-color: var(--clr-photos);
 }
+
+.little-button-container {
+	width: 20px;
+	height: 20px;
+	background-color: white;
+	border: 2px solid var(--clr-primary-5-1);
+	border-radius: 5px;
+	text-align: center;
+	opacity: 20%;
+}
+.little-button-container:hover {
+	opacity: 100%;
+}

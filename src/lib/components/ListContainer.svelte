@@ -4,8 +4,6 @@
     export let minWidthRem = 0;
     export let minWidthPx = 0;
     export let tabs = [];
-    export let addFunction = null;  // Function should have the form func(args : args = null)
-    export let removeFunction = null;   // Function should have the form func(args : any = null)
 
     function setTab(tabName) {
         CurrentMainTab.set(tabName["tab"]);
@@ -55,8 +53,8 @@
     }
     .tab {
         text-align: center;
-        padding: 5px 10px 5px 10px;
-        margin: 0px 1px 0px 1px;
+        padding: 5px 10px;
+        margin: 0px 1px;
         border-radius: 8px 8px 0px 0px;
         border: var(--border-size-med) solid var(--clr-primary-5-1);
         background-color: white;
