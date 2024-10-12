@@ -10,7 +10,7 @@
 
 <div class="line-break" style={dotted ? "border-style: dotted;" : "border-style: solid;"}></div>
 {#if true}
-    <button class="insert-container noselect" on:click={sendInsertIdxRequest(insertAtIdx)}>
+    <button class="insert-container noselect" on:click={() => sendInsertIdxRequest(insertAtIdx)}>
         <img style="width:100%; height:100%; scale: 175%; background-color: none;" src={Add} alt="AddIcon"/>
     </button>
 {/if}

@@ -43,10 +43,10 @@
             
             // Function for sorting a job by ID.
             function compareGroups(a, b) {
-                if (a["id"] < b["id"]) {
+                if (a["group_number"] < b["group_number"]) {
                     return -1
                 }
-                if (a["id"] > b["id"]) {
+                if (a["group_number"] > b["group_number"]) {
                     return 1;
                 }
                 return 0;
@@ -264,17 +264,17 @@
             <ListContainerLineBreak insertAtIdx=1/>
             {#each Object.entries(slidesGroups || {}) as [idx, groupData], i}
                 <ol>
-                    <div class="idx">{groupData.id}</div>
-                    <DpiColumn bind:groupData idx={groupData.id} defaultTo={defaults.slidesDpi} options={[1250, 2500, 5000]} name="dpi"/>
-                    <YNColumn bind:groupData idx={groupData.id} defaultTo={defaults.slidesCorrect} name="correct"/>
-                    <CountColumn bind:groupData idx={groupData.id} name="scanner_count"/>
-                    <CountColumn bind:groupData idx={groupData.id} name="hs_count"/>
-                    <EditingColumn bind:groupData idx={groupData.id} value={"N/A"} name="editing_time"/>
-                    <TextColumn bind:groupData idx={groupData.id} name="comments"/>
-                    <ComputeColumn project_id = {data.id} group_idx={groupData.id} media_type="slides"/>
+                    <div class="idx">{groupData['group_number']}</div>
+                    <DpiColumn bind:groupData idx={groupData['group_number']} defaultTo={defaults.slidesDpi} options={[1250, 2500, 5000]} name="dpi"/>
+                    <YNColumn bind:groupData idx={groupData['group_number']} defaultTo={defaults.slidesCorrect} name="correct"/>
+                    <CountColumn bind:groupData idx={groupData['group_number']} name="scanner_count"/>
+                    <CountColumn bind:groupData idx={groupData['group_number']} name="hs_count"/>
+                    <EditingColumn bind:groupData idx={groupData['group_number']} value={"N/A"} name="editing_time"/>
+                    <TextColumn bind:groupData idx={groupData['group_number']} name="comments"/>
+                    <ComputeColumn project_id = {data['group_number']} group_idx={groupData['group_number']} media_type="slides"/>
                 </ol>
                 {#if i < Object.entries(slidesGroups).length - 1}
-                    <ListContainerLineBreak insertAtIdx={groupData.id + 1} dotted={true}/>
+                    <ListContainerLineBreak insertAtIdx={groupData['group_number'] + 1} dotted={true}/>
                 {/if}
             {/each}
 
@@ -285,16 +285,16 @@
             <ListContainerLineBreak insertAtIdx = 1/>
             {#each Object.entries(printsGroups || {}) as [idx, groupData], i}
                 <ol>
-                    <div class="idx">{groupData.id}</div>
-                    <DpiColumn bind:groupData idx={groupData.id} defaultTo={defaults.printsDpi} options={[300, 600, 1200]} name="dpi"/>
-                    <YNColumn bind:groupData idx={groupData.id} defaultTo={defaults.printsCorrect} name="correct"/>
-                    <CountColumn bind:groupData idx={groupData.id} name="lp_count"/>
-                    <CountColumn bind:groupData idx={groupData.id} name="hs_count"/>
-                    <CountColumn bind:groupData idx={groupData.id} name="oshs_count"/>
-                    <TextColumn bind:groupData idx={groupData.id} name="comments"/>
+                    <div class="idx">{groupData['group_number']}</div>
+                    <DpiColumn bind:groupData idx={groupData['group_number']} defaultTo={defaults.printsDpi} options={[300, 600, 1200]} name="dpi"/>
+                    <YNColumn bind:groupData idx={groupData['group_number']} defaultTo={defaults.printsCorrect} name="correct"/>
+                    <CountColumn bind:groupData idx={groupData['group_number']} name="lp_count"/>
+                    <CountColumn bind:groupData idx={groupData['group_number']} name="hs_count"/>
+                    <CountColumn bind:groupData idx={groupData['group_number']} name="oshs_count"/>
+                    <TextColumn bind:groupData idx={groupData['group_number']} name="comments"/>
                 </ol>
                 {#if i < Object.entries(printsGroups).length - 1}
-                    <ListContainerLineBreak insertAtIdx={groupData.id + 1} dotted={true}/>
+                    <ListContainerLineBreak insertAtIdx={groupData['group_number'] + 1} dotted={true}/>
                 {/if}
             {/each}
 
@@ -305,16 +305,16 @@
             <ListContainerLineBreak insertAtIdx = 1/>
             {#each Object.entries(negativesGroups || {}) as [idx, groupData], i}
                 <ol>
-                    <div class="idx">{groupData.id}</div>
-                    <DpiColumn bind:groupData idx={groupData.id} defaultTo={defaults.negativesDpi} options={[1250, 1500, 2500, 3000, 4000, 5000]} name="dpi"/>
-                    <YNColumn bind:groupData idx={groupData.id} defaultTo={defaults.negativesCorrect} name="correct"/>
-                    <CountColumn bind:groupData idx={groupData.id} name="strip_count"/>
-                    <CountColumn bind:groupData idx={groupData.id} name="images_count"/>
-                    <CountColumn bind:groupData idx={groupData.id} name="hs_count"/>
-                    <TextColumn bind:groupData idx={groupData.id} name="comments"/>
+                    <div class="idx">{groupData['group_number']}</div>
+                    <DpiColumn bind:groupData idx={groupData['group_number']} defaultTo={defaults.negativesDpi} options={[1250, 1500, 2500, 3000, 4000, 5000]} name="dpi"/>
+                    <YNColumn bind:groupData idx={groupData['group_number']} defaultTo={defaults.negativesCorrect} name="correct"/>
+                    <CountColumn bind:groupData idx={groupData['group_number']} name="strip_count"/>
+                    <CountColumn bind:groupData idx={groupData['group_number']} name="images_count"/>
+                    <CountColumn bind:groupData idx={groupData['group_number']} name="hs_count"/>
+                    <TextColumn bind:groupData idx={groupData['group_number']} name="comments"/>
                 </ol>
                 {#if i < Object.entries(negativesGroups).length - 1}
-                    <ListContainerLineBreak insertAtIdx={groupData.id + 1} dotted={true}/>
+                    <ListContainerLineBreak insertAtIdx={groupData['group_number'] + 1} dotted={true}/>
                 {/if}
             {/each}
 
