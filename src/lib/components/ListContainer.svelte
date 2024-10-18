@@ -10,7 +10,10 @@
     }
 </script>
 
-<!-- Hacky workaround to make the page have a 20px border on the right-->
+<!-- 
+    I'm going to hell for the contents of this file -- avert your eyes :)
+    Hacky workaround to make the page have a 20px border on the right
+-->
 <div style="width:calc(calc({minWidthRem}rem + {minWidthPx}px) + calc(var(--gap-listcontainer) * 2)); height: 0.01px; background-color: green; opacity: 0%"></div>
 
 {#if tabs.length}

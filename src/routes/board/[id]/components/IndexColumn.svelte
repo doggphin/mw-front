@@ -5,6 +5,7 @@
     let sortJobsByGroupNumber = getContext('sortJobsByGroupNumber');
 
     export let idx, groupData, name;
+    export let editingMode = false;
     let width = widthConsts.index;
 
     function tryUpdateIndex(value) {
@@ -30,13 +31,18 @@
     }
 </script>
 
-
-<input
-    style="flex: {width} 0 {width}rem;"
-    placeholder={idx}
-    value={idx}
-    on:change={(val) => {tryUpdateIndex(val)}}
->
+{#if editingMode}
+    <input
+        style="flex: {width} 0 {width}rem;"
+        placeholder={idx}
+        value={idx}
+        on:change={(val) => {tryUpdateIndex(val)}}
+    >
+{:else}
+    <div style="flex: {width} 0 {width}rem;">
+        {idx}
+    </div>
+{/if}
 
 
 <style>
@@ -46,6 +52,6 @@
         margin: 0 -2.5px; /* To fix added padding */
         border-radius: 5px;
         min-height: 20px;
-        background-color: white;
+        background-color: var(--clr-primary-5);;
     }
 </style>

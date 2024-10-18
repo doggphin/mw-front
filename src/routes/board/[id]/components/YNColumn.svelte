@@ -5,6 +5,7 @@
     let addGroupUpdate = getContext('addGroupUpdate');
 
     export let idx, defaultTo, name, groupData;
+    export let editingMode = false;
 
     // console.log(defaultTo);
     /* on:change={} (val) => sendUpdate(idx, name, val.target.value)*/
@@ -25,7 +26,7 @@
                 break;
             default:
                 groupData[name] = original;
-                value.target.value='N';
+                value.target.value = 'N';
                 return;
         }
         value.target.value = charTyped;
@@ -35,11 +36,17 @@
 </script>   
 
 
-<input 
-    style="flex: {width} 0 {width}rem;"
-    value={boolToChar(groupData[name]) ?? defaultTo}
-    on:input={(val) => updateValue(val)}
->
+{#if editingMode}
+    <input 
+        style="flex: {width} 0 {width}rem;"
+        value={boolToChar(groupData[name]) ?? defaultTo}
+        on:input={(val) => updateValue(val)}
+    >
+{:else}
+    <div style="flex: {width} 0 {width}rem;">
+        {boolToChar(groupData[name] ?? defaultTo)}
+    </div>
+{/if}
 
 
 <style>
@@ -49,5 +56,6 @@
         margin: 0 -2.5px; /* To fix added padding */
         border-radius: 5px;
         min-height: 20px;
+        background-color: var(--clr-primary-5);
     }
 </style>

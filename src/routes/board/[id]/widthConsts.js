@@ -4,7 +4,7 @@ export let widthConsts = {
 
     corr: 2,
     number: 2.5,
-    timer: 3,
+    timer: 4,
     comments: 7,
 
     compute: 1

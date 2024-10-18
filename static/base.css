@@ -119,7 +119,7 @@ h3 {
 	border: 2px solid var(--clr-primary-5-1);
 	border-radius: 5px;
 	text-align: center;
-	opacity: 20%;
+	opacity: 40%;
 }
 .little-button-container:hover {
 	opacity: 100%;
