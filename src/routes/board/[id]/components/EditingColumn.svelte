@@ -11,8 +11,8 @@
     export let idx, name, groupData;
 
     let width = widthConsts.timer;
-    function openTimerModal() {
-        openModal(EditingModal, { idx: idx, name: name, groupData: groupData })
+    function openTimerModal(editingTag) {
+        openModal(EditingModal, { idx: idx, groupData: groupData, editingTag: editingTag})
     }
 </script>
 
@@ -21,7 +21,7 @@
     {#each groupData["editing_tags"] as editingTag}
     <div class="editing-tag-container">
         <div style="min-width: 3em; text-align: start;">
-            <button class="editing-tag-time" on:click={openTimerModal}>
+            <button class="editing-tag-time" on:click={openTimerModal(editingTag)}>
                 {secondsToFormattedTime(editingTag["time"])}
             </button>
         </div>

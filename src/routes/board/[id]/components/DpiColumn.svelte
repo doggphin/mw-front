@@ -23,7 +23,7 @@
     <select 
         style="flex: {width} 0 {width}rem;"
         on:change={(val) => updateValue(val)}
-    >   
+    >
         {#each options as option}
             {#if groupData[name] == option}
                 <option value={option} selected>{option}</option>
