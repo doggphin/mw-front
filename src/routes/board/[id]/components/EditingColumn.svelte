@@ -5,10 +5,11 @@
     import { secondsToFormattedTime } from "$lib/scripts/helpers.js";
     import { editingTypesToLabel, editingTypes } from "$lib/scripts/editing.js"
     import EditingModal from "./EditingModal.svelte";
+    import AddIcon from "$lib/assets/add_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg";
+    let addEditingTagUpdateRequest = getContext('addEditingTagUpdateRequest');
+    let addEditingTagAddRequest = getContext('addEditingTagAddRequest');
 
-    import Timer from "$lib/assets/timer_24dp_FILL0_wght400_GRAD0_opsz24.svg";
-    import Add from "$lib/assets/add_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg";
-    export let idx, name, groupData;
+    export let idx, groupData;
 
     let width = widthConsts.timer;
     function openTimerModal(editingTag) {
@@ -20,13 +21,11 @@
 
     {#each groupData["editing_tags"] as editingTag}
     <div class="editing-tag-container">
-        <div style="min-width: 3em; text-align: start;">
-            <button class="editing-tag-time" on:click={openTimerModal(editingTag)}>
-                {secondsToFormattedTime(editingTag["time"])}
-            </button>
-        </div>
+        <button class="editing-time" on:click={openTimerModal(editingTag)}>
+            {secondsToFormattedTime(editingTag["time"])}
+        </button>
 
-        <select>
+        <select class="editing-type">
             {#each editingTypes as editingType}
                 {#if editingType === editingTypesToLabel[editingTag["editing_type"]]}
                     <option value={editingType} selected>{editingType}</option>
@@ -38,8 +37,9 @@
     </div>
     {/each}
 
-    <button class="editing-tag-container editing-tag-add-container" style="justify-content: center;">
-        <img style="height:100%; margin: -5px; background-color: none;" src={Add} alt="Add Icon"/>
+    <button class="editing-tag-container editing-tag-add-container"
+        on:click={addEditingTagAddRequest(idx)}>
+        <img style="height:100%; margin: -5px; background-color: none;" src={AddIcon} alt="Add Icon"/>
     </button>
 
     <!--
@@ -60,21 +60,38 @@
         display: flex;
         justify-content: space-between;
         width: 100%;
+        padding: 5px 0px;
         margin: 5px 0px;
-        padding: 5px 5px;
         background-color: var(--clr-primary-5);
         border-radius: 5px;
         border: none;
         overflow: auto;
     }
+
+    .editing-tag-add-container {
+        justify-content: center;
+    }
     .editing-tag-add-container:hover {
         background-color: var(--clr-primary-5-1);
         border-radius: 5px;
     }
-    .editing-tag-time {
+
+
+    .editing-time {
         border: none;
         border-radius: 5px;
+        margin-left: 5px;
+        background-color: var(--clr-primary-5);
     }
+    .editing-time:hover {
+        background-color: var(--clr-primary-5-1);
+    }
+    .editing-type {
+        margin-right: 5px;
+    }
+</style>
+
+<!--
     .timer-container {
         margin-top: 2.5px;
         margin-left: -20px;
@@ -90,14 +107,5 @@
     .timer-container:hover {
         background-color: var(--clr-primary-5-2);
         transition-duration: .2s;
-    }
-    /*
-    input {
-        min-width: 0;
-        width: 100%;
-        min-height: 25px;
-        background-color: var(--clr-primary-5);
-        border-radius: 5px;
-    }
-    */
-</style>
+    }   
+-->

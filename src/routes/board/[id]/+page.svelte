@@ -1,6 +1,7 @@
 <script>
     import { PageNameStore, CurrentMainTab, ProjectWebsocket } from '$lib/scripts/mtd-store.js';
     import { boolToChar, getRandom } from '$lib/scripts/helpers.js';
+    import { handleUpdateEditingTag, addTempEditingTag } from "$lib/scripts/project.js";
     import { PUBLIC_IP_HTTP_BACKEND, PUBLIC_IP_WS_BACKEND } from '$env/static/public';
     import { widthConsts } from './widthConsts.js';
     import { setContext, onMount, onDestroy } from 'svelte';
@@ -22,7 +23,7 @@
 
     let error = false;
     let editingMode = false;
-    let project;
+    export let project;
     let tabsCache = [];
     let defaults = {
         slidesDpi : 1250,
@@ -31,6 +32,17 @@
         printsCorrect : "N",
         negativesDpi : 1500,
         negativesCorrect : "N"
+    };
+    // An identifier token is attached to modification requests to (until profiles are set up) determine what session sent it
+    // If a frontend session receives an update, if it came from themselves, it is ignored, or in some situations, used to update temporary values.
+    const SESSION_TOKEN = getRandom(-2147483648, 2147483647);
+    let groupUpdateQueue = {
+        'token': SESSION_TOKEN,
+        'type': "update_group",
+        'data': {
+            'token' : SESSION_TOKEN,
+            'updates' : []
+        }
     };
     function getMaxGroupNumber(groups) {
         if(!groups) {
@@ -46,19 +58,33 @@
         "prints" : 0,
         "negatives" : 0
     }
-
+    function jobNameToGroups(job_name) {
+        switch(job_name) {
+            case 'slides_job':
+                return slidesGroups;
+            case 'prints_job':
+                return printsGroups;
+            case 'negatives_job':
+                return negativesGroups;
+            default:
+                return null;
+        }
+    }
     const job_dict = {
         "slides_job" : {
             TAB_NAME : "Slides",
             SHORT_NAME : "slides",
+            GROUPS : slidesGroups
         },
         "prints_job" : {
             TAB_NAME : "Prints",
-            SHORT_NAME : "prints"
+            SHORT_NAME : "prints",
+            GROUPS : printsGroups
         },
         "negatives_job" : {
             TAB_NAME : "Negatives",
-            SHORT_NAME : "negatives"
+            SHORT_NAME : "negatives",
+            GROUPS : negativesGroups
         }
     }
     
@@ -133,17 +159,7 @@
         getProjectData();
     });
     
-    // An identifier token is attached to modification requests to (until profiles are set up) determine what session sent it
-    // If a frontend session receives an update, if it came from themselves, it is ignored.
-    const myIdentifierToken = getRandom(-2147483648, 2147483647);
-    let groupUpdateQueue = {
-        'token': myIdentifierToken,
-        'type': "update_group",
-        'data': {
-            'token' : myIdentifierToken,
-            'updates' : []
-        }
-    };
+
     // Adds an update to append to the list of updates to intermittently send to the server.
     function addGroupUpdate(idx, col, val) {
         // Try to replace any previous updates with this update if possible
@@ -219,43 +235,56 @@
     setContext("sendDeleteIdxRequest", sendDeleteIdxRequest);
 
     // Send a request to modify an editing tag
-    function sendUpdateEditingTagRequest(idx, tagId, editingType, time) {
-        sendRequest({
-            "type" : "modify_editing_tag",
-            "data" : {
-                "job" : $CurrentMainTab,
-                "idx" : idx,
-                "tag_id" : tagId,
-                "editing_type" : editingType,
-                "time" : time
+    function addEditingTagUpdateRequest(idx, tagId, editingType, time) {
+        /* Backend expects an update with the following format:
+        {
+            ...
+            "val" : {       # This is editing_tag_update_val
+                "update_type" : "add" | "remove" | "modify",
+                "id" : int,     # (only included if update type is "remove" or "modify")
+                "time" : int (optional),
+                "editing_type" : string (optional)
             }
-        });
+        */
+        let val = {
+            "update_type" : "modify",
+            "id" : tagId
+        }
+        if(editingType !== null) {
+            val["editing_type"] = editingType;
+        }
+        if(time !== null) {
+            val["time"] = time;
+        }
+
+        addGroupUpdate(idx, "editing_tags", val);
     }
-    setContext("sendUpdateEditingTagRequest", sendDeleteIdxRequest);
+    setContext("addEditingTagUpdateRequest", sendDeleteIdxRequest);
 
     // Send a request to modify an editing tag
-    function addEditingTagRequest(idx) {
-        sendRequest({
-            "type" : "add_editing_tag",
-            "data" : {
-                "job" : $CurrentMainTab,
-                "idx" : idx,
-            }
+    function addEditingTagAddRequest(idx) {
+        // Until a confirmation is received from the server, temporarily create a new editing tag and assign
+        // it a random id.
+        const randomTempId = getRandom(-2147483648, 0);
+        addGroupUpdate(idx, "editing_tags", {
+            "update_type" : "add",
+            "sender_temp_id" : randomTempId,
         });
+        let groups = jobNameToGroups(tabNameToJobName($CurrentMainTab));
+        let group = groups.find(group => group['group_number'] == idx);
+        addTempEditingTag(group, randomTempId);
+        project = project;
     }
-    setContext("addEditingTagRequest", sendDeleteIdxRequest);
+    setContext("addEditingTagAddRequest", addEditingTagAddRequest);
 
     // Send a request to modify an editing tag
-    function removeEditingTagRequest(idx, tagId) {
-        sendRequest({
-            "type" : "remove_editing_tag",
-            "data" : {
-                "job" : $CurrentMainTab,
-                "idx" : idx,
-            }
+    function addEditingTagDeleteRequest(idx, tagId) {
+        addGroupUpdate(idx, "editing_tags", {
+            "update_type" : "delete",
+            "id" : tagId
         });
     }
-    setContext("removeEditingTagRequest", sendDeleteIdxRequest);
+    setContext("addEditingTagDeleteRequest", addEditingTagDeleteRequest);
 
     if($ProjectWebsocket != null) {
         $ProjectWebsocket.close();
@@ -268,6 +297,34 @@
     $ProjectWebsocket.onopen = (e) => {
         console.log("Websocket connection opened!");
     };
+    function handleProjectUpdateIdx(msg) {
+        console.log(`Receiving an update for ${msg['idx']}`);
+        // If the token on this update is the same as my current token, that means I sent it, so it can be ignored
+
+        let idx = msg['idx']
+        let col = msg['col']
+        let val = msg['val']
+        let groups = jobNameToGroups(msg['job']);
+        let group = groups.find(o => o["group_number"] == idx);
+        if (group) {
+            switch(msg['col']) {
+                case 'editing_tags':
+                    console.log("Received an editing tag modification request: " + val);
+                    console.log(`my actual session token is ${SESSION_TOKEN}`);
+                    handleUpdateEditingTag(group, val, msg['token'], SESSION_TOKEN);
+                    break;
+                default:
+                    if(msg['token'] === SESSION_TOKEN) {
+                        return;
+                    }
+                    group[col] = val;
+                    break;
+            }
+            project = project;  // Update DOM
+        } else {
+            console.log("Error reading websocket message : Invalid job!");
+        }
+    }
     $ProjectWebsocket.onmessage = (event) => {
         try {
             const event_json = JSON.parse(event.data);
@@ -275,40 +332,13 @@
             switch(event_json['type']) {
 
                 case "projects.update_idx":
-                    console.log(`Receiving an update for ${msg['idx']}`);
-                    // If the token on this update is the same as my current token, that means I sent it, so it can be ignored
-                    if(msg['token'] === myIdentifierToken) {
-                        return;
-                    }
-
-                    let idx = msg['idx']
-                    let col = msg['col']
-                    let val = msg['val']
-                    let groups = null;
-                    switch(msg['job']) {
-                        case 'slides_job':
-                            groups = slidesGroups;
-                            break;
-                        case 'prints_job':
-                            groups = printsGroups;
-                            break;
-                        case 'negatives_job':
-                            groups = negativesGroups;
-                            break;
-                    }
-                    let group = groups.find(o => o["group_number"] == idx);
-                    if (group) {
-                        group[col] = val;
-                    } else {
-                        console.log("Error reading websocket message : Invalid job!");
-                    }
+                    handleProjectUpdateIdx(msg);
+                    break;
                 
-                // # TODO : don't do this. introduces a shitton of lag
-                case "projects.force_update":
+                case "projects.force_update": //TODO : don't do this. introduces a shitton of lag
                     getProjectData(false);
                     break;
-            }
-            
+            }          
         } catch(e) {
             console.log(`Error reading websocket message : ${e}`);
         }
@@ -383,7 +413,7 @@
 
 {#if project}
     <button style="position: absolute; right: 20px; top: 15px; z-index: 100; padding:5px;" on:click={toggleEditingMode}>
-        Editing Modes
+        Editing Mode
     </button>
 {/if}
 
