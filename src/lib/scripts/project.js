@@ -1,7 +1,10 @@
 //import { project } from "../../routes/board/[id]/+page.svelte";     // HIGHLY ILLEGAL
+import { getContext } from 'svelte';
 
-export function updateDom() {
-    //project = project;
+
+export function updateProject() {
+    let fun = getContext("updateProject");
+    fun();
 }
 
 export function addEditingTag(group, id, time, editing_type, tempId, receivedSessionToken, sessionToken) {
@@ -27,14 +30,16 @@ export function addTempEditingTag(group, randomId) {
 }
 
 export function removeEditingTag(group, id) {
+    // TODO: Why am I going backwards through this again?
     for (let i = group['editing_tags'].length - 1; i >= 0; --i) {
         if (group['editing_tags'][i].id == id) {
-            myArray.splice(i,1);
+            group['editing_tags'].splice(i,1);
         }
     }
     //updateDom();
 }
 
+// If editing_time or editing_type is null, they are not modified.
 export function modifyEditingTag(group, id, editing_time, editing_type) {
     let editing_tag = group['editing_tags'].find(tag => tag["id"] == id);
     if (editing_time !== null) {
@@ -43,7 +48,7 @@ export function modifyEditingTag(group, id, editing_time, editing_type) {
     if (editing_type !== null) {
         editing_tag['editing_type'] = editing_type;
     }
-    //updateDom();
+    //updateProject();
 }
 
 export function handleUpdateEditingTag(group, val, receivedToken, sessionToken) {
@@ -51,12 +56,12 @@ export function handleUpdateEditingTag(group, val, receivedToken, sessionToken) 
         case 'add':
             addEditingTag(group, val['id'], val['time'], val['editing_type'], val['sender_temp_id'], receivedToken, sessionToken);
             break;
-        case 'remove':
+        case 'delete':
             removeEditingTag(group, val['id'])
             break;
         case 'modify':
             modifyEditingTag(group,
-                id,
+                val['id'],
                 val.hasOwnProperty('time') ? val['time'] : null,
                 val.hasOwnProperty('editing_type') ? val['editing_type'] : null
             );

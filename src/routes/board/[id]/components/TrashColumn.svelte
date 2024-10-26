@@ -8,7 +8,9 @@
 </script>
 
 {#if editingMode}
-    <button class="little-button-container trash-container" on:click={() => sendDeleteIdxRequest(idx)}>
+    <button class="little-button-container trash-container"
+    on:click={() => sendDeleteIdxRequest(idx)}
+    title="Delete Row">
         <img style="width:100%; height:100%; background-color: none; size: 200%" src={Trash} alt="Timer Icon"/>
     </button>
 {/if}

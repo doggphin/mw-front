@@ -5,6 +5,10 @@
     import { PUBLIC_IP_HTTP_BACKEND, PUBLIC_IP_WS_BACKEND } from '$env/static/public';
     import { widthConsts } from './widthConsts.js';
     import { setContext, onMount, onDestroy } from 'svelte';
+    import { getKeyByValue } from "$lib/scripts/helpers.js";
+    import { editingTypesToLabel } from "$lib/scripts/editing.js";
+    import { videoTypes } from "$lib/scripts/video.js";
+
     import ListContainer from '$lib/components/ListContainer.svelte';
     import TempMessage from '$lib/components/TempMessage.svelte';
     import Row from './components/Row.svelte';
@@ -13,7 +17,7 @@
     import TitleRow from './components/TitleRow.svelte';
     import IndexColumn from './components/IndexColumn.svelte';
     import YNColumn from './components/YNColumn.svelte';
-    import DpiColumn from './components/DpiColumn.svelte';
+    import DropdownColumn from './components/DropdownColumn.svelte';
     import CountColumn from './components/CountColumn.svelte';
     import TextColumn from './components/TextColumn.svelte';
     import EditingColumn from './components/EditingColumn.svelte';
@@ -25,14 +29,6 @@
     let editingMode = false;
     export let project;
     let tabsCache = [];
-    let defaults = {
-        slidesDpi : 1250,
-        slidesCorrect : "N",
-        printsDpi : 300,
-        printsCorrect : "N",
-        negativesDpi : 1500,
-        negativesCorrect : "N"
-    };
     // An identifier token is attached to modification requests to (until profiles are set up) determine what session sent it
     // If a frontend session receives an update, if it came from themselves, it is ignored, or in some situations, used to update temporary values.
     const SESSION_TOKEN = getRandom(-2147483648, 2147483647);
@@ -44,19 +40,16 @@
             'updates' : []
         }
     };
-    function getMaxGroupNumber(groups) {
-        if(!groups) {
-            return 0;
-        }
-        return Math.max(...groups.maxPrintsGroupNumber(o => o['group_number']))
-    }
+
     $: slidesGroups = project?.["slides_job"]?.["groups"];
     $: printsGroups = project?.["prints_job"]?.["groups"];
     $: negativesGroups = project?.["negatives_job"]?.["groups"];
+    $: videoGroups = project?.["video_job"]?.["groups"];
     $: maxGroupNumbers = {
         "slides" : 0,
         "prints" : 0,
-        "negatives" : 0
+        "negatives" : 0,
+        "video" : 0
     }
     function jobNameToGroups(job_name) {
         switch(job_name) {
@@ -66,6 +59,8 @@
                 return printsGroups;
             case 'negatives_job':
                 return negativesGroups;
+            case 'video_job':
+                return videoGroups;
             default:
                 return null;
         }
@@ -85,11 +80,15 @@
             TAB_NAME : "Negatives",
             SHORT_NAME : "negatives",
             GROUPS : negativesGroups
+        },
+        "video_job" : {
+            TAB_NAME : "Video",
+            SHORT_NAME : "video",
+            GROUPS : videoGroups
         }
     }
     
     function tabNameToJobName(tabName) {
-        console.log(`converting ${tabName}`);
         for(const [key, value] of Object.entries(job_dict)) {
             if(value['TAB_NAME'] == tabName) {
                 return key;
@@ -152,6 +151,7 @@
         }
     }
 
+
     // When this page loads, reset the page name (will be set in getProjectData), reset the current tab and request this project's data
     onMount(async () => {
         PageNameStore.set("");
@@ -178,11 +178,16 @@
     }
     setContext("addGroupUpdate", addGroupUpdate); 
 
+    /*
+    Sends a JS object as a request to the server in JSON format.
+    */
     function sendRequest(req) {
         $ProjectWebsocket.send(JSON.stringify(req));
     }
 
-    // Sends the group update queue off to the server to update the database
+    /*
+    Sends the group update queue off to the server to update the database.
+    */
     function sendGroupUpdates() {
         if(groupUpdateQueue.data.updates.length > 0) {
             sendRequest(groupUpdateQueue);
@@ -191,6 +196,12 @@
     }
     setInterval(sendGroupUpdates, 500);         // Send off queued changes every 500ms
 
+
+    /*
+    Called when the user attempts to change the group number of a group.
+    If this returns false, the user attempted to change its group number to something invalid.
+    Otherwise, add a request to change a group number from "from" to "to" to the server request queue, then return true.
+    */
     function validateChangeGroupNumber(from, to) {
         if(from == to) {
             console.log("Trying to change index from and to current. Skipping...");
@@ -207,11 +218,16 @@
         return true;
 
         // TODO:
-        // might be worthwhile to check through the update queue to check if already trying to change any index values, and if so, don't allow the change to go through
+        // might be worthwhile to check through the update queue to check if already trying to change any index values,
+        // and if so, don't allow the change to go through
     }
     setContext("validateChangeGroupNumber", validateChangeGroupNumber);
 
-    // Send a request to the server to insert a group at the specified index
+
+    /*
+    Send a request to the server to insert a group at the specified index.
+    Logic for this is only done on the server (for now).
+    */
     function sendInsertIdxRequest(idx) {
         sendRequest({
             "type" : "insert_group",
@@ -223,7 +239,11 @@
     }
     setContext("sendInsertIdxRequest", sendInsertIdxRequest);
 
-    // Send a request to the server to delete a group with the specified index
+
+    /*
+    Send a request to the server to delete a group with the specified index.
+    Logic for this is only done on the server (for now).
+    */
     function sendDeleteIdxRequest(idx) {sendRequest({
             "type" : "delete_group",
             "data" : {
@@ -234,7 +254,14 @@
     }
     setContext("sendDeleteIdxRequest", sendDeleteIdxRequest);
 
-    // Send a request to modify an editing tag
+
+    /*
+    Adds an update editing tag request for the editing tag with ID "tagId" in group with group number "idx"
+    to the update queue for sending to the server.
+    
+    If editingType is null, it won't be included.
+    If time is null, it won't be included.
+    */
     function addEditingTagUpdateRequest(idx, tagId, editingType, time) {
         /* Backend expects an update with the following format:
         {
@@ -250,8 +277,10 @@
             "update_type" : "modify",
             "id" : tagId
         }
+        // Make sure to convert back to database entry naming style ("Other" -> "NA")
         if(editingType !== null) {
-            val["editing_type"] = editingType;
+            let dbEntryEditingType = getKeyByValue(editingTypesToLabel, editingType);
+            val["editing_type"] = dbEntryEditingType;
         }
         if(time !== null) {
             val["time"] = time;
@@ -259,9 +288,27 @@
 
         addGroupUpdate(idx, "editing_tags", val);
     }
-    setContext("addEditingTagUpdateRequest", sendDeleteIdxRequest);
+    setContext("addEditingTagUpdateRequest", addEditingTagUpdateRequest);
 
-    // Send a request to modify an editing tag
+
+    /*
+    Updates the DOM to relay any nested object updates in the loaded project.
+    */
+    function updateProject() {
+        project = project;
+    }
+    setContext("updateProject", updateProject);
+
+
+    /*
+    Sends a request to the server to add an editing tag for the currently
+    opened job for group "idx".
+    
+    Temporarily creates an editing tag with a random ID. When the server tells
+    clients a new editing tag is supposed to be added, this client updates its
+    temporary editing tag ID (which is randomly generated) with the new editing
+    tag's ID.
+    */
     function addEditingTagAddRequest(idx) {
         // Until a confirmation is received from the server, temporarily create a new editing tag and assign
         // it a random id.
@@ -277,7 +324,11 @@
     }
     setContext("addEditingTagAddRequest", addEditingTagAddRequest);
 
-    // Send a request to modify an editing tag
+
+    /*
+    Adds a request to update an editing tag in the currently opened job for group
+    "idx", with tag ID "tagID", to the update request cache.
+    */
     function addEditingTagDeleteRequest(idx, tagId) {
         addGroupUpdate(idx, "editing_tags", {
             "update_type" : "delete",
@@ -286,6 +337,8 @@
     }
     setContext("addEditingTagDeleteRequest", addEditingTagDeleteRequest);
 
+
+    // Websocket stuff
     if($ProjectWebsocket != null) {
         $ProjectWebsocket.close();
     }
@@ -310,7 +363,6 @@
             switch(msg['col']) {
                 case 'editing_tags':
                     console.log("Received an editing tag modification request: " + val);
-                    console.log(`my actual session token is ${SESSION_TOKEN}`);
                     handleUpdateEditingTag(group, val, msg['token'], SESSION_TOKEN);
                     break;
                 default:
@@ -349,15 +401,17 @@
         }
     })
 
+    
+    // Definitions of names and visual widths of columns for job types
     const widths = {
         get slides() {
             return {
                 "#" : widthConsts.index,
-                "DPI" : widthConsts.dpi,
+                "DPI" : widthConsts.dropdown,
                 "Corr." : widthConsts.corr, 
                 "Scan" : widthConsts.number,
                 "HS" : widthConsts.number,
-                "Editing" : widthConsts.timer,
+                "Editing" : widthConsts.editing,
                 "Comments" : widthConsts.comments,
                 "" : widthConsts.compute
             }
@@ -365,22 +419,35 @@
         get prints() {
             return {
                 "#" : widthConsts.index,
-                "DPI" : widthConsts.dpi,  
+                "DPI" : widthConsts.dropdown,  
                 "Corr." : widthConsts.corr, 
                 "LP" : widthConsts.number,
                 "HS" : widthConsts.number,
                 "OSHS" : widthConsts.number,
+                "Editing" : widthConsts.editing,
                 "Comments" : widthConsts.comments
             }
         },
         get negatives() {
             return {
                 "#" : widthConsts.index,
-                "DPI" : widthConsts.dpi,  
+                "DPI" : widthConsts.dropdown,  
                 "Corr." : widthConsts.corr, 
                 "Strips" : widthConsts.number,
                 "Count" : widthConsts.number,
                 "HS" : widthConsts.number,
+                "Editing" : widthConsts.editing,
+                "Comments" : widthConsts.comments
+            }
+        },
+        get video() {
+            return {
+                "#" : widthConsts.index,
+                "Type" : widthConsts.dropdown,
+                "DVD #" : widthConsts.number,
+                "VCR" : widthConsts.number,
+                "Station" : widthConsts.number,
+                "Editing" : widthConsts.editing,
                 "Comments" : widthConsts.comments
             }
         },
@@ -406,14 +473,18 @@
     };
 
     
+    // Switches this project page between being in editing or normal mode
     function toggleEditingMode() {
         editingMode = !editingMode;
     }
 </script>
 
+
 {#if project}
-    <button style="position: absolute; right: 20px; top: 15px; z-index: 100; padding:5px;" on:click={toggleEditingMode}>
-        Editing Mode
+    <button title="Switch between Normal and Editing Modes"
+    style="position: absolute; right: 20px; top: 15px; z-index: 100; padding:5px;" 
+    on:click={toggleEditingMode}>
+        {editingMode ? "Switch to Normal Mode" : "Switch to Editing Mode"}
     </button>
 {/if}
 
@@ -435,11 +506,12 @@
                     <IndexColumn bind:groupData idx={groupData['group_number']}
                         name="group_number"
                         editingMode = {editingMode}/>
-                    <DpiColumn bind:groupData idx={groupData['group_number']}
+                    <DropdownColumn bind:groupData idx={groupData['group_number']}
                         name="dpi"
                         defaultTo={1250}
                         options={[1250, 2500, 5000]}
-                        editingMode={editingMode}/>
+                        editingMode={editingMode}
+                        requireEditingMode={true}/>
                     <YNColumn bind:groupData idx={groupData['group_number']}
                         name="correct"
                         defaultTo={"N"}
@@ -450,10 +522,10 @@
                     <CountColumn bind:groupData idx={groupData['group_number']}
                         name="hs_count"
                         editingMode={editingMode}/>
-                    <EditingColumn bind:groupData idx={groupData['group_number']}
-                        name="editing_time"/>
+                    <EditingColumn bind:groupData idx={groupData['group_number']}/>
                     <TextColumn bind:groupData idx={groupData['group_number']}
-                        name="comments"/>
+                        name="comments"
+                        widthName="comments"/>
                     <ComputeColumn
                         project_id = {data['group_number']}
                         group_idx={groupData['group_number']}
@@ -466,6 +538,7 @@
             {/each}
             <ListContainerLineBreak insertAtIdx={maxGroupNumbers["slides"] + 1} endOfContainerInsert = {true}
                 drawInsert={editingMode}/>
+
 
         {:else if $CurrentMainTab == "Prints"}
             <ol>
@@ -482,11 +555,11 @@
                     <IndexColumn bind:groupData idx={groupData['group_number']}
                         name="group_number"
                         editingMode = {editingMode}/>
-                    <DpiColumn bind:groupData idx={groupData['group_number']}
-                        defaultTo={300}
+                    <DropdownColumn bind:groupData idx={groupData['group_number']}
                         options={[300, 600, 1200]}
                         name="dpi"
-                        editingMode = {editingMode}/>
+                        editingMode = {editingMode}
+                        requireEditingMode={true}/>
                     <YNColumn bind:groupData idx={groupData['group_number']}
                         defaultTo={"N"}
                         name="correct"
@@ -500,8 +573,10 @@
                     <CountColumn bind:groupData idx={groupData['group_number']}
                         name="oshs_count"
                         editingMode = {editingMode}/>
+                    <EditingColumn bind:groupData idx={groupData['group_number']}/>
                     <TextColumn bind:groupData idx={groupData['group_number']}
-                        name="comments"/>
+                        name="comments"
+                        widthName="comments"/>
                 </ol>
                 {#if i < Object.entries(printsGroups).length - 1}
                     <ListContainerLineBreak insertAtIdx={groupData['group_number'] + 1} dotted={true}
@@ -511,6 +586,7 @@
             <ListContainerLineBreak insertAtIdx={maxGroupNumbers["prints"] + 1}
                 endOfContainerInsert = {true}
                 drawInsert={editingMode}/>
+
 
         {:else if $CurrentMainTab == "Negatives"}
             <ol>
@@ -527,11 +603,11 @@
                     <IndexColumn bind:groupData idx={groupData['group_number']}
                         name="group_number"
                         editingMode = {editingMode}/>
-                    <DpiColumn bind:groupData idx={groupData['group_number']}
-                        defaultTo={1200}
+                    <DropdownColumn bind:groupData idx={groupData['group_number']}
                         options={[1250, 1500, 2500, 3000, 4000, 5000]}
                         name="dpi"
-                        editingMode = {editingMode}/>
+                        editingMode = {editingMode}
+                        requireEditingMode={true}/>
                     <YNColumn bind:groupData idx={groupData['group_number']}
                         defaultTo={"N"}
                         name="correct"
@@ -545,8 +621,10 @@
                     <CountColumn bind:groupData idx={groupData['group_number']}
                         name="hs_count"
                         editingMode = {editingMode}/>
+                    <EditingColumn bind:groupData idx={groupData['group_number']}/>
                     <TextColumn bind:groupData idx={groupData['group_number']}
-                        name="comments"/>
+                        name="comments"
+                        widthName="comments"/>
                 </ol>
                 {#if i < Object.entries(negativesGroups).length - 1}
                     <ListContainerLineBreak insertAtIdx={groupData['group_number'] + 1}
@@ -555,6 +633,52 @@
                 {/if}
             {/each}
             <ListContainerLineBreak insertAtIdx={maxGroupNumbers["negatives"] + 1}
+                endOfContainerInsert = {true}
+                drawInsert={editingMode}/>
+
+
+        {:else if $CurrentMainTab == "Video"}
+            <ol>
+                <TitleRow titles={widths.video}/>
+            </ol>
+            {#if maxGroupNumbers["video"] > 0}
+                <ListContainerLineBreak insertAtIdx=1
+                    drawInsert={editingMode}/>
+            {/if}
+            {#each Object.entries(videoGroups || {}) as [idx, groupData], i}
+                <ol>
+                    <TrashColumn idx={groupData['group_number']}
+                        editingMode = {editingMode}/>
+                    <IndexColumn bind:groupData idx={groupData['group_number']}
+                        name="group_number"
+                        editingMode = {editingMode}/>
+                    <DropdownColumn bind:groupData idx={groupData['group_number']}
+                        name="video_type"
+                        options={videoTypes}
+                        editingMode={editingMode}
+                        requireEditingMode={true}/>
+                    <TextColumn bind:groupData idx={groupData['group_number']}
+                        name="vcr"
+                        widthName="number"/>
+                    <TextColumn bind:groupData idx={groupData['group_number']}
+                        name="vcr"
+                        widthName="smallText"/>
+                    <TextColumn bind:groupData idx={groupData['group_number']}
+                        name="vcr"
+                        widthName="number"/>
+                    <EditingColumn bind:groupData idx={groupData['group_number']}/>
+                    <TextColumn bind:groupData idx={groupData['group_number']}
+                        name="comments"
+                        widthName="comments"/>
+
+                </ol>
+                {#if i < Object.entries(videoGroups).length - 1}
+                    <ListContainerLineBreak insertAtIdx={groupData['group_number'] + 1}
+                        dotted={true}
+                        drawInsert={editingMode}/>
+                {/if}
+            {/each}
+            <ListContainerLineBreak insertAtIdx={maxGroupNumbers["video"] + 1}
                 endOfContainerInsert = {true}
                 drawInsert={editingMode}/>
 

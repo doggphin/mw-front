@@ -3,8 +3,8 @@
     import { widthConsts } from '../widthConsts.js';
     let addGroupUpdate = getContext('addGroupUpdate');
 
-    export let idx, groupData, name;
-    let width = widthConsts.comments;
+    export let idx, groupData, name, widthName;
+    let width = widthConsts[widthName];
 
     function onChange(val) {
         addGroupUpdate(idx, name, val);
@@ -16,6 +16,7 @@
 <span
     contenteditable="true"
     style="flex: {width} 0 {width}rem; max-width: {width}"
+    spellcheck="false"
     on:input={(e) => onChange(e.target.textContent)}
     textContent={groupData[name] ?? ""}
 >

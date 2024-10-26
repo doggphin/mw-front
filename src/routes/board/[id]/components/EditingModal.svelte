@@ -2,36 +2,77 @@
   import { getContext } from 'svelte';
   import { closeModal } from 'svelte-modals';
   import { editingTypesToLabel } from "$lib/scripts/editing.js";
+  import { conformStringToNumber } from "$lib/scripts/helpers.js";
   import RestartIcon from "$lib/assets/replay_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg";
   import StartIcon from "$lib/assets/play_arrow_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg";
   import StopIcon from "$lib/assets/stop_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg";
   import TrashIcon from "$lib/assets/delete_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg";
-  let addEditingTagDeleteRequest = getContext('addEditingTagDeleteRequest');
+  //let addEditingTagUpdateRequest = getContext('addEditingTagUpdateRequest');
 
   export let isOpen;
-  export let idx, editingTag;
+  export let idx, editingTag, addEditingTagUpdateRequest, addEditingTagDeleteRequest;
 
   let isTicking = false;
-  let hours = Math.floor(editingTag["time"] / 3600);
-  let minutes = Math.floor((editingTag["time"] / 60) - (hours / 60));
-  let seconds = editingTag["time"] % 60;
+
+  let totalTime = editingTag["time"];
+  let seconds = totalTime % 60;
+  let minutes = Math.floor((totalTime - seconds) / 60) % 60;
+  let hours = Math.floor((totalTime - minutes * 60 - seconds) / 3600);
+
+  function addTimeUpdateRequestAndClose() {
+    addEditingTagUpdateRequest(idx, editingTag['id'], null, totalTime);
+    closeModal();
+  }
+
 
   function padTime(time) {
     return time.toString().padStart(2, '0');
   }
 
-  let secondsAtStartOfClock = 0;
-  function incrementClock() {
-    seconds += 1;
-    if(seconds > 60) {
-      seconds = 0;
-      minutes += 1;
-      if(minutes > 60) {
-        minutes = 0;
-        hours += 1;
-      }
+
+  function balanceMeasurements() {
+    updateTotalTimeFromMeasurements();
+    updateMeasurementsFromTotalTime();
+  }
+
+  
+  function setMeasurement(value, measurement) {
+    let conformed = conformStringToNumber(value.target.value, 32767);
+    value.target.value = conformed;
+    switch(measurement) {
+      case "seconds":
+        seconds = conformed;
+        break;
+      case "minutes":
+        minutes = conformed;
+        break;
+      case "hours":
+        hours = conformed;
+        break;
+      default:
+        console.log("Unrecognized time measurement!");
+        break;
     }
   }
+
+
+  function updateMeasurementsFromTotalTime() {
+    seconds = totalTime % 60;
+    minutes = Math.floor((totalTime - seconds) / 60) % 60;
+    hours = Math.floor((totalTime - minutes * 60 - seconds) / 3600);
+  }
+
+
+  function updateTotalTimeFromMeasurements() {
+    totalTime = hours * 3600 + minutes * 60 + seconds;
+  }
+
+
+  function incrementClock() {
+    totalTime += 1;
+    updateMeasurementsFromTotalTime();
+  }
+
 
   let clockInterval = null;
   function startClock() {
@@ -39,24 +80,29 @@
       stopClock();
     } else {
       isTicking = true;
-      secondsAtStartOfClock = editingTag["time"];
       clockInterval = setInterval(incrementClock, 1000);
     }
   }
 
-  function stopClock() {
+
+  function stopClock(sendUpdate = true) {
+    if(sendUpdate && isTicking) {
+      updateTotalTimeFromMeasurements();
+      addEditingTagUpdateRequest(idx, editingTag['id'], null, totalTime);
+    }
     isTicking = false;
     clearInterval(clockInterval);
   }
 
+
   function resetClock() {
-    stopClock();
-    seconds = 0;
-    minutes = 0;
-    hours = 0;
+    stopClock(false);
+    totalTime = 0;
   }
 
+
   // https://github.com/sveltejs/svelte/issues/5799 might be the culprit..?
+  // TODO: export deleteEditingTag as a field to be set when creating the modal
   function deleteEditingTag() {
     addEditingTagDeleteRequest(idx, editingTag["id"]);
     closeModal();
@@ -72,21 +118,28 @@
 
       <div style="margin: 125px 80px;"> a clock should go here :)</div>
       <div class="time-inputs-container">
-        <input value={padTime(hours)}>
+        <input value={padTime(hours)}
+        on:input={(val) => {setMeasurement(val, "hours")}}
+        on:change={balanceMeasurements}>
+
         <div style="margin: 10px 0px;"> : </div>
-        <input value={padTime(minutes)}>
+
+        <input value={padTime(minutes)}
+        on:input={(val) => {setMeasurement(val, "minutes")}}
+        on:change={balanceMeasurements}>
+
         <div style="margin: 10px 0px;"> : </div>
-        <input value={padTime(seconds)}>
+
+        <input value={padTime(seconds)}
+        on:input={(val) => {setMeasurement(val, "seconds")}}
+        on:change={balanceMeasurements}>
       </div>
 
       <div class="time-actions-container">
-        <button class="icon-button" on:click={resetClock}>
+        <button class="icon-button"on:click={resetClock}>
           <img class="icon" src={RestartIcon} alt="Restart"/>
         </button>
-        <button class="icon-button"
-          style="{isTicking ? "background-color: var(--clr-primary-5-2)" : ""}"
-          on:click={startClock}
-        >
+        <button class="icon-button" on:click={startClock} style="{isTicking ? "background-color: var(--clr-primary-5-2)" : ""}">
           <img class="icon" src={StartIcon} alt="Start"/>
         </button>
         <button class="icon-button" on:click={stopClock}>
@@ -100,8 +153,8 @@
         >
           <img class="icon" src={TrashIcon} alt="Delete"/>
         </button>
-        <button class="exit">
-          Exit
+        <button class="exit" on:click={addTimeUpdateRequestAndClose}>
+          Save & Exit
         </button>
       </div>
     </div>

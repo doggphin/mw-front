@@ -4,10 +4,11 @@
     import { widthConsts } from '../widthConsts.js';
     let addGroupUpdate = getContext('addGroupUpdate');
 
-    export let idx, defaultTo, options, name, groupData;
+    export let idx, options, name, groupData;
+    export let requireEditingMode = false;
     export let editingMode = false;
 
-    let width = widthConsts.dpi;
+    let width = widthConsts.dropdown;
 
     function updateValue(val) {
         let newValue = val.target.value;
@@ -19,7 +20,7 @@
 </script>
 
 
-{#if editingMode}
+{#if !requireEditingMode || editingMode}
     <select 
         style="flex: {width} 0 {width}rem;"
         on:change={(val) => updateValue(val)}

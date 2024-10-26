@@ -15,7 +15,8 @@
 
 
 <div class = "container" style="flex: {width} 0 {width}rem">
-    <button class="timer-container" alt="Timer Icon" on:click={openFinalCheckModal}>
+    <button class="timer-container" alt="Timer Icon" title="Open Automatic File Actions"
+    on:click={openFinalCheckModal}>
         <img style="width:100%; height:100%; background-color: none;" src={FolderWorkIcon} alt="Folder Work Icon"/>
     </button>
 </div>

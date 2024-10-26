@@ -7,25 +7,34 @@
     import EditingModal from "./EditingModal.svelte";
     import AddIcon from "$lib/assets/add_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg";
     let addEditingTagUpdateRequest = getContext('addEditingTagUpdateRequest');
+    let addEditingTagDeleteRequest = getContext('addEditingTagDeleteRequest');
     let addEditingTagAddRequest = getContext('addEditingTagAddRequest');
 
     export let idx, groupData;
 
-    let width = widthConsts.timer;
+    let width = widthConsts.editing;
     function openTimerModal(editingTag) {
-        openModal(EditingModal, { idx: idx, groupData: groupData, editingTag: editingTag})
+        openModal(EditingModal, { idx: idx, 
+            groupData: groupData, 
+            editingTag: editingTag, 
+            addEditingTagUpdateRequest : addEditingTagUpdateRequest,
+            addEditingTagDeleteRequest : addEditingTagDeleteRequest
+        });
     }
 </script>
+
 
 <div class="container" style="flex: {width} 0 {width}rem;">
 
     {#each groupData["editing_tags"] as editingTag}
     <div class="editing-tag-container">
-        <button class="editing-time" on:click={openTimerModal(editingTag)}>
+        <button class="editing-time"
+        on:click={openTimerModal(editingTag)}>
             {secondsToFormattedTime(editingTag["time"])}
         </button>
 
-        <select class="editing-type">
+        <select class="editing-type"
+        on:change={(val) => addEditingTagUpdateRequest(idx, editingTag['id'], val.target.value, null)}>
             {#each editingTypes as editingType}
                 {#if editingType === editingTypesToLabel[editingTag["editing_type"]]}
                     <option value={editingType} selected>{editingType}</option>
@@ -38,7 +47,8 @@
     {/each}
 
     <button class="editing-tag-container editing-tag-add-container"
-        on:click={addEditingTagAddRequest(idx)}>
+    on:click={addEditingTagAddRequest(idx)}
+    title="Add Editing Record">
         <img style="height:100%; margin: -5px; background-color: none;" src={AddIcon} alt="Add Icon"/>
     </button>
 

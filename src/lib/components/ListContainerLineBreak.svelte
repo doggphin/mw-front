@@ -24,7 +24,9 @@
         <div style="margin-bottom: 10px;"></div>
     {/if}
     <!-- If marked as an endOfContainerInsert, nudge the button down a bit to be flush with its container. -->
-    <button class="insert-container noselect {endOfContainerInsert ? "insert-container-nudge-down" : ""}" on:click={() => sendInsertIdxRequest(insertAtIdx)}>
+    <button class="insert-container noselect {endOfContainerInsert ? "insert-container-nudge-down" : ""}"
+    on:click={() => sendInsertIdxRequest(insertAtIdx)}
+    title="Add Row">
         <img style="width:100%; height:100%; scale: 175%; background-color: none;" src={Add} alt="AddIcon"/>
     </button>
 {/if}
