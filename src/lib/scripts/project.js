@@ -1,10 +1,8 @@
 //import { project } from "../../routes/board/[id]/+page.svelte";     // HIGHLY ILLEGAL
-import { getContext } from 'svelte';
-
+import { UpdateProject } from '$lib/scripts/mtd-store.js';
 
 export function updateProject() {
-    let fun = getContext("updateProject");
-    fun();
+    UpdateProject();
 }
 
 export function addEditingTag(group, id, time, editing_type, tempId, receivedSessionToken, sessionToken) {
@@ -36,7 +34,7 @@ export function removeEditingTag(group, id) {
             group['editing_tags'].splice(i,1);
         }
     }
-    //updateDom();
+    updateProject();
 }
 
 // If editing_time or editing_type is null, they are not modified.
@@ -57,6 +55,10 @@ export function handleUpdateEditingTag(group, val, receivedToken, sessionToken) 
             addEditingTag(group, val['id'], val['time'], val['editing_type'], val['sender_temp_id'], receivedToken, sessionToken);
             break;
         case 'delete':
+            if(receivedToken == sessionToken) {
+                console.log("Received command to delete editing tag deleted on client; ignoring");
+                return;
+            }
             removeEditingTag(group, val['id'])
             break;
         case 'modify':

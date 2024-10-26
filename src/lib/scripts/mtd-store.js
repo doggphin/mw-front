@@ -5,3 +5,5 @@ export const CurrentMainTab = writable("");
 export const ProjectWebsocket = writable();
 
 export const WorkerWebsocket = writable();
+
+export const UpdateProject = writable();

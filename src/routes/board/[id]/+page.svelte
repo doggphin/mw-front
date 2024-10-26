@@ -1,24 +1,24 @@
 <script>
-    import { PageNameStore, CurrentMainTab, ProjectWebsocket } from '$lib/scripts/mtd-store.js';
+    import { PageNameStore, CurrentMainTab, ProjectWebsocket, UpdateProject } from '$lib/scripts/mtd-store.js';
     import { boolToChar, getRandom } from '$lib/scripts/helpers.js';
-    import { handleUpdateEditingTag, addTempEditingTag } from "$lib/scripts/project.js";
+    import { handleUpdateEditingTag, addTempEditingTag, removeEditingTag } from "$lib/scripts/project.js";
     import { PUBLIC_IP_HTTP_BACKEND, PUBLIC_IP_WS_BACKEND } from '$env/static/public';
-    import { widthConsts } from './widthConsts.js';
+    import { widths, widthConsts } from './widthConsts.js';
     import { setContext, onMount, onDestroy } from 'svelte';
     import { getKeyByValue } from "$lib/scripts/helpers.js";
     import { editingTypesToLabel } from "$lib/scripts/editing.js";
     import { videoTypes } from "$lib/scripts/video.js";
+    import { dataTypes } from "$lib/scripts/data.js";
 
+    import JobDisplay from "./components/JobDisplay.svelte";
     import ListContainer from '$lib/components/ListContainer.svelte';
     import TempMessage from '$lib/components/TempMessage.svelte';
-    import Row from './components/Row.svelte';
     import ListContainerLineBreak from "$lib/components/ListContainerLineBreak.svelte";
     import TrashColumn from "./components/TrashColumn.svelte";
-    import TitleRow from './components/TitleRow.svelte';
     import IndexColumn from './components/IndexColumn.svelte';
     import YNColumn from './components/YNColumn.svelte';
     import DropdownColumn from './components/DropdownColumn.svelte';
-    import CountColumn from './components/CountColumn.svelte';
+    import InputColumn from './components/InputColumn.svelte';
     import TextColumn from './components/TextColumn.svelte';
     import EditingColumn from './components/EditingColumn.svelte';
     import ComputeColumn from './components/ComputeColumn.svelte';
@@ -45,27 +45,15 @@
     $: printsGroups = project?.["prints_job"]?.["groups"];
     $: negativesGroups = project?.["negatives_job"]?.["groups"];
     $: videoGroups = project?.["video_job"]?.["groups"];
+    $: dataGroups = project?.["data_job"]?.["groups"];
     $: maxGroupNumbers = {
         "slides" : 0,
         "prints" : 0,
         "negatives" : 0,
-        "video" : 0
+        "video" : 0,
+        "groups" : 0
     }
-    function jobNameToGroups(job_name) {
-        switch(job_name) {
-            case 'slides_job':
-                return slidesGroups;
-            case 'prints_job':
-                return printsGroups;
-            case 'negatives_job':
-                return negativesGroups;
-            case 'video_job':
-                return videoGroups;
-            default:
-                return null;
-        }
-    }
-    const job_dict = {
+    const jobDict = {
         "slides_job" : {
             TAB_NAME : "Slides",
             SHORT_NAME : "slides",
@@ -85,11 +73,33 @@
             TAB_NAME : "Video",
             SHORT_NAME : "video",
             GROUPS : videoGroups
+        },
+        "data_job" : {
+            TAB_NAME : "Data",
+            SHORT_NAME : "data",
+            GROUPS : dataGroups
         }
     }
-    
+
+    function jobNameToGroups(job_name) {
+        switch(job_name) {
+            case 'slides_job':
+                return slidesGroups;
+            case 'prints_job':
+                return printsGroups;
+            case 'negatives_job':
+                return negativesGroups;
+            case 'video_job':
+                return videoGroups;
+            case 'data_job':
+                return dataGroups;
+            default:
+                return null;
+        }
+    }
+
     function tabNameToJobName(tabName) {
-        for(const [key, value] of Object.entries(job_dict)) {
+        for(const [key, value] of Object.entries(jobDict)) {
             if(value['TAB_NAME'] == tabName) {
                 return key;
             }
@@ -98,7 +108,7 @@
     }
 
     function sortJobsByGroupNumber(resetTab = false) {
-        for(const [key, value] of Object.entries(job_dict)) {
+        for(const [key, value] of Object.entries(jobDict)) {
             // If project contains this job,
             if(project.hasOwnProperty(key)) {
                 if(resetTab) {
@@ -232,6 +242,7 @@
         sendRequest({
             "type" : "insert_group",
             "data" : {
+                "token" : SESSION_TOKEN,
                 "job" : $CurrentMainTab,
                 "idx" : idx
             }
@@ -244,13 +255,26 @@
     Send a request to the server to delete a group with the specified index.
     Logic for this is only done on the server (for now).
     */
-    function sendDeleteIdxRequest(idx) {sendRequest({
+    function sendDeleteIdxRequest(idx) {
+        console.log("test");
+        sendRequest({
             "type" : "delete_group",
             "data" : {
+                "token" : SESSION_TOKEN,
                 "job" : $CurrentMainTab,
                 "idx" : idx
             }
         });
+        let jobName = tabNameToJobName($CurrentMainTab);
+        let groups = project[jobName]["groups"];
+        groups.forEach((item, index) => {
+            console.log("checking...");
+            if(item['group_number'] === idx) {
+                console.log("deleting");
+                groups.splice(index, 1);
+            }
+        });
+        project = project;
     }
     setContext("sendDeleteIdxRequest", sendDeleteIdxRequest);
 
@@ -294,10 +318,10 @@
     /*
     Updates the DOM to relay any nested object updates in the loaded project.
     */
-    function updateProject() {
+    let updateProject = () => {
         project = project;
     }
-    setContext("updateProject", updateProject);
+    UpdateProject.set(updateProject);
 
 
     /*
@@ -334,6 +358,9 @@
             "update_type" : "delete",
             "id" : tagId
         });
+        let groups = jobNameToGroups(tabNameToJobName($CurrentMainTab));
+        let group = groups.find(group => group['group_number'] == idx);
+        removeEditingTag(group, tagId);
     }
     setContext("addEditingTagDeleteRequest", addEditingTagDeleteRequest);
 
@@ -354,15 +381,14 @@
         console.log(`Receiving an update for ${msg['idx']}`);
         // If the token on this update is the same as my current token, that means I sent it, so it can be ignored
 
-        let idx = msg['idx']
-        let col = msg['col']
-        let val = msg['val']
+        let idx = msg['idx'];
+        let col = msg['col'];
+        let val = msg['val'];
         let groups = jobNameToGroups(msg['job']);
         let group = groups.find(o => o["group_number"] == idx);
         if (group) {
             switch(msg['col']) {
                 case 'editing_tags':
-                    console.log("Received an editing tag modification request: " + val);
                     handleUpdateEditingTag(group, val, msg['token'], SESSION_TOKEN);
                     break;
                 default:
@@ -377,6 +403,28 @@
             console.log("Error reading websocket message : Invalid job!");
         }
     }
+    function handleProjectDeleteIdx(msg) {
+        console.log(`Receiving a delete command for ${msg['idx']}`);
+
+        let token = msg['token']
+
+        if(SESSION_TOKEN == token) {
+            console.log("Received a command to delete a group already deleted on client. Ignoring.");
+            return;
+        }
+
+        let idx = msg['idx'];
+        let job = msg['job'];
+        console.log(`Deleting idx ${idx} and job ${job}`);
+        let groups = jobNameToGroups(job);
+        groups.forEach((item, index) => {
+            if (item['group_number'] === idx) {
+                groups.splice(index, 1);
+                return;
+            }
+        });
+        project = project;
+    }
     $ProjectWebsocket.onmessage = (event) => {
         try {
             const event_json = JSON.parse(event.data);
@@ -387,7 +435,12 @@
                     handleProjectUpdateIdx(msg);
                     break;
                 
+                case "projects.delete_group":
+                    handleProjectDeleteIdx(msg);
+                    break;
+
                 case "projects.force_update": //TODO : don't do this. introduces a shitton of lag
+                    console.log("received a force update!");
                     getProjectData(false);
                     break;
             }          
@@ -401,68 +454,7 @@
         }
     })
 
-    
-    // Definitions of names and visual widths of columns for job types
-    const widths = {
-        get slides() {
-            return {
-                "#" : widthConsts.index,
-                "DPI" : widthConsts.dropdown,
-                "Corr." : widthConsts.corr, 
-                "Scan" : widthConsts.number,
-                "HS" : widthConsts.number,
-                "Editing" : widthConsts.editing,
-                "Comments" : widthConsts.comments,
-                "" : widthConsts.compute
-            }
-        },
-        get prints() {
-            return {
-                "#" : widthConsts.index,
-                "DPI" : widthConsts.dropdown,  
-                "Corr." : widthConsts.corr, 
-                "LP" : widthConsts.number,
-                "HS" : widthConsts.number,
-                "OSHS" : widthConsts.number,
-                "Editing" : widthConsts.editing,
-                "Comments" : widthConsts.comments
-            }
-        },
-        get negatives() {
-            return {
-                "#" : widthConsts.index,
-                "DPI" : widthConsts.dropdown,  
-                "Corr." : widthConsts.corr, 
-                "Strips" : widthConsts.number,
-                "Count" : widthConsts.number,
-                "HS" : widthConsts.number,
-                "Editing" : widthConsts.editing,
-                "Comments" : widthConsts.comments
-            }
-        },
-        get video() {
-            return {
-                "#" : widthConsts.index,
-                "Type" : widthConsts.dropdown,
-                "DVD #" : widthConsts.number,
-                "VCR" : widthConsts.number,
-                "Station" : widthConsts.number,
-                "Editing" : widthConsts.editing,
-                "Comments" : widthConsts.comments
-            }
-        },
-        getSumColumnWidthsRem: function(name) {
-            return Object.entries(this[name]).reduce((a, [key, value]) => a + value, 0);
-        },
-        getColumnGapsPx: function(name) {
-            // There is 7.5px of extra padding on either end of Row.svelte
-            return 15 + (10 * (Object.entries(this[name]).length));    // Subtracts one from length to get gaps between columns, then add horizontal padding
-        },
-        getWidth: function(name) {
-            let res = [this.getSumColumnWidthsRem(name), this.getColumnGapsPx(name)];
-            return res;
-        }
-    }
+
     let listContainerMinWidthRem = 0;
     let listContainerMinWidthPx = 0;
     $: $CurrentMainTab, setWidths()
@@ -481,10 +473,9 @@
 
 
 {#if project}
-    <button title="Switch between Normal and Editing Modes"
-    style="position: absolute; right: 20px; top: 15px; z-index: 100; padding:5px;" 
+    <button style="position: absolute; right: 20px; top: 15px; z-index: 100; padding:5px;" 
     on:click={toggleEditingMode}>
-        {editingMode ? "Switch to Normal Mode" : "Switch to Editing Mode"}
+        {`Switch to ${editingMode ? "Normal" : "Editing"} Mode`}
     </button>
 {/if}
 
@@ -492,195 +483,248 @@
     {#if project}
 
         {#if $CurrentMainTab == "Slides" && slidesGroups}
-            <ol>
-                <TitleRow titles={widths.slides}/>
-            </ol>
-            {#if maxGroupNumbers["slides"] > 0}
-                <ListContainerLineBreak insertAtIdx=1
-                    drawInsert={editingMode}/>
-            {/if}
-            {#each Object.entries(slidesGroups || {}) as [idx, groupData], i}
-                <ol>
-                    <TrashColumn idx={groupData['group_number']}
-                        editingMode={editingMode}/>
-                    <IndexColumn bind:groupData idx={groupData['group_number']}
-                        name="group_number"
-                        editingMode = {editingMode}/>
-                    <DropdownColumn bind:groupData idx={groupData['group_number']}
-                        name="dpi"
-                        defaultTo={1250}
-                        options={[1250, 2500, 5000]}
-                        editingMode={editingMode}
-                        requireEditingMode={true}/>
-                    <YNColumn bind:groupData idx={groupData['group_number']}
-                        name="correct"
-                        defaultTo={"N"}
-                        editingMode = {editingMode}/>
-                    <CountColumn bind:groupData idx={groupData['group_number']}
-                        name="scanner_count"
-                        editingMode={editingMode}/>
-                    <CountColumn bind:groupData idx={groupData['group_number']}
-                        name="hs_count"
-                        editingMode={editingMode}/>
-                    <EditingColumn bind:groupData idx={groupData['group_number']}/>
-                    <TextColumn bind:groupData idx={groupData['group_number']}
-                        name="comments"
-                        widthName="comments"/>
-                    <ComputeColumn
-                        project_id = {data['group_number']}
-                        group_idx={groupData['group_number']}
-                        media_type="slides"/>
-                </ol>
-                {#if i < Object.entries(slidesGroups).length - 1}
-                    <ListContainerLineBreak insertAtIdx={groupData['group_number'] + 1} dotted={true}
-                        drawInsert={editingMode}/>
-                {/if}
-            {/each}
-            <ListContainerLineBreak insertAtIdx={maxGroupNumbers["slides"] + 1} endOfContainerInsert = {true}
-                drawInsert={editingMode}/>
+            <JobDisplay name="slides" maxGroupNumber={maxGroupNumbers["slides"]} editingMode={editingMode}>
+                {#each Object.entries(slidesGroups || {}) as [_, groupData], i}
+                    {@const idx = groupData['group_number']}
+                    <ol>
+                        <TrashColumn idx={idx}
+                            editingMode={editingMode}/>
+                        <IndexColumn bind:groupData idx={idx}
+                            name="group_number"
+                            editingMode = {editingMode}/>
+                        <DropdownColumn bind:groupData idx={idx}
+                            name="dpi"
+                            options={[1250, 2500, 5000]}
+                            editingMode={editingMode}
+                            requireEditingMode={true}/>
+                        <YNColumn bind:groupData idx={idx}
+                            name="correct"
+                            defaultTo={"N"}
+                            editingMode = {editingMode}/>
+                        <InputColumn bind:groupData idx={idx}
+                            intakeName="intake_scanner_count"
+                            finalName="final_scanner_count"
+                            overlayCounts = {true}
+                            warnOnDifferent = {true}
+                            enforceNumbers = {true}
+                            editingMode={editingMode}/>
+                        <InputColumn bind:groupData idx={idx}
+                            intakeName="intake_scanner_count"
+                            finalName="final_hs_count"
+                            overlayCounts = {true}
+                            warnOnDifferent = {true}
+                            enforceNumbers = {true}
+                            editingMode={editingMode}/>
+                        <EditingColumn bind:groupData idx={idx}/>
+                        <TextColumn bind:groupData idx={idx}
+                            name="comments"
+                            widthName="comments"/>
+                        <ComputeColumn
+                            project_id = {data['group_number']}
+                            group_idx={idx}
+                            media_type="slides"/>
+                    </ol>
+                    {#if i < Object.entries(slidesGroups).length - 1}
+                        <ListContainerLineBreak insertAtIdx={idx + 1} dotted={true}
+                            drawInsert={editingMode}/>
+                    {/if}
+                {/each}
+            </JobDisplay>
 
 
         {:else if $CurrentMainTab == "Prints"}
-            <ol>
-                <TitleRow titles={widths.prints}/>
-            </ol>
-            {#if maxGroupNumbers["prints"] > 0}
-                <ListContainerLineBreak insertAtIdx=1
-                    drawInsert={editingMode}/>
-            {/if}
-            {#each Object.entries(printsGroups || {}) as [idx, groupData], i}
-                <ol>
-                    <TrashColumn idx={groupData['group_number']}
-                        editingMode = {editingMode}/>
-                    <IndexColumn bind:groupData idx={groupData['group_number']}
-                        name="group_number"
-                        editingMode = {editingMode}/>
-                    <DropdownColumn bind:groupData idx={groupData['group_number']}
-                        options={[300, 600, 1200]}
-                        name="dpi"
-                        editingMode = {editingMode}
-                        requireEditingMode={true}/>
-                    <YNColumn bind:groupData idx={groupData['group_number']}
-                        defaultTo={"N"}
-                        name="correct"
-                        editingMode = {editingMode}/>
-                    <CountColumn bind:groupData idx={groupData['group_number']}
-                        name="lp_count"
-                        editingMode = {editingMode}/>
-                    <CountColumn bind:groupData idx={groupData['group_number']}
-                        name="hs_count"
-                        editingMode = {editingMode}/>
-                    <CountColumn bind:groupData idx={groupData['group_number']}
-                        name="oshs_count"
-                        editingMode = {editingMode}/>
-                    <EditingColumn bind:groupData idx={groupData['group_number']}/>
-                    <TextColumn bind:groupData idx={groupData['group_number']}
-                        name="comments"
-                        widthName="comments"/>
-                </ol>
-                {#if i < Object.entries(printsGroups).length - 1}
-                    <ListContainerLineBreak insertAtIdx={groupData['group_number'] + 1} dotted={true}
-                        drawInsert={editingMode}/>
-                {/if}
-            {/each}
-            <ListContainerLineBreak insertAtIdx={maxGroupNumbers["prints"] + 1}
-                endOfContainerInsert = {true}
-                drawInsert={editingMode}/>
+            <JobDisplay name="prints" maxGroupNumber={maxGroupNumbers["prints"]} editingMode={editingMode}>
+                {#each Object.entries(printsGroups || {}) as [_, groupData], i}
+                    {@const idx = groupData['group_number']}
+                    <ol>
+                        <TrashColumn idx={idx}
+                            editingMode = {editingMode}/>
+                        <IndexColumn bind:groupData idx={idx}
+                            name="group_number"
+                            editingMode = {editingMode}/>
+                        <DropdownColumn bind:groupData idx={idx}
+                            options={[300, 600, 1200]}
+                            name="dpi"
+                            editingMode = {editingMode}
+                            requireEditingMode={true}/>
+                        <YNColumn bind:groupData idx={idx}
+                            defaultTo={"N"}
+                            name="correct"
+                            editingMode = {editingMode}/>
+                        <InputColumn bind:groupData idx={idx}
+                            intakeName="intake_lp_count"
+                            finalName="final_lp_count"
+                            overlayCounts = {true}
+                            warnOnDifferent = {true}
+                            enforceNumbers = {true}
+                            editingMode = {editingMode}/>
+                        <InputColumn bind:groupData idx={idx}
+                            intakeName="intake_hs_count"
+                            finalName="final_hs_count"
+                            overlayCounts = {true}
+                            warnOnDifferent = {true}
+                            enforceNumbers = {true}
+                            editingMode = {editingMode}/>
+                        <InputColumn bind:groupData idx={idx}
+                            intakeName="intake_oshs_count"
+                            finalName="final_oshs_count"
+                            overlayCounts = {true}
+                            warnOnDifferent = {true}
+                            enforceNumbers = {true}
+                            editingMode = {editingMode}/>
+                        <EditingColumn bind:groupData idx={idx}/>
+                        <TextColumn bind:groupData idx={idx}
+                            name="comments"
+                            widthName="comments"/>
+                        <ComputeColumn
+                            project_id = {data['group_number']}
+                            group_idx={idx}
+                            media_type="prints"/>
+                    </ol>
+                    {#if i < Object.entries(printsGroups).length - 1}
+                        <ListContainerLineBreak insertAtIdx={idx + 1} dotted={true}
+                            drawInsert={editingMode}/>
+                    {/if}
+                {/each}
+            </JobDisplay>
 
 
         {:else if $CurrentMainTab == "Negatives"}
-            <ol>
-                <TitleRow titles={widths.negatives}/>
-            </ol>
-            {#if maxGroupNumbers["negatives"] > 0}
-                <ListContainerLineBreak insertAtIdx=1
-                    drawInsert={editingMode}/>
-            {/if}
-            {#each Object.entries(negativesGroups || {}) as [idx, groupData], i}
-                <ol>
-                    <TrashColumn idx={groupData['group_number']}
-                        editingMode = {editingMode}/>
-                    <IndexColumn bind:groupData idx={groupData['group_number']}
-                        name="group_number"
-                        editingMode = {editingMode}/>
-                    <DropdownColumn bind:groupData idx={groupData['group_number']}
-                        options={[1250, 1500, 2500, 3000, 4000, 5000]}
-                        name="dpi"
-                        editingMode = {editingMode}
-                        requireEditingMode={true}/>
-                    <YNColumn bind:groupData idx={groupData['group_number']}
-                        defaultTo={"N"}
-                        name="correct"
-                        editingMode = {editingMode}/>
-                    <CountColumn bind:groupData idx={groupData['group_number']}
-                        name="strip_count"
-                        editingMode = {editingMode}/>
-                    <CountColumn bind:groupData idx={groupData['group_number']}
-                        name="images_count"
-                        editingMode = {editingMode}/>
-                    <CountColumn bind:groupData idx={groupData['group_number']}
-                        name="hs_count"
-                        editingMode = {editingMode}/>
-                    <EditingColumn bind:groupData idx={groupData['group_number']}/>
-                    <TextColumn bind:groupData idx={groupData['group_number']}
-                        name="comments"
-                        widthName="comments"/>
-                </ol>
-                {#if i < Object.entries(negativesGroups).length - 1}
-                    <ListContainerLineBreak insertAtIdx={groupData['group_number'] + 1}
-                        dotted={true}
-                        drawInsert={editingMode}/>
-                {/if}
-            {/each}
-            <ListContainerLineBreak insertAtIdx={maxGroupNumbers["negatives"] + 1}
-                endOfContainerInsert = {true}
-                drawInsert={editingMode}/>
+            <JobDisplay name="negatives" maxGroupNumber={maxGroupNumbers["negatives"]} editingMode={editingMode}>
+                {#each Object.entries(negativesGroups || {}) as [_, groupData], i}
+                    {@const idx = groupData['group_number']}
+                    <ol>
+                        <TrashColumn idx={idx}
+                            editingMode = {editingMode}/>
+                        <IndexColumn bind:groupData idx={idx}
+                            name="group_number"
+                            editingMode = {editingMode}/>
+                        <DropdownColumn bind:groupData idx={idx}
+                            options={[1250, 1500, 2500, 3000, 4000, 5000]}
+                            name="dpi"
+                            editingMode = {editingMode}
+                            requireEditingMode={true}/>
+                        <YNColumn bind:groupData idx={idx}
+                            defaultTo={"N"}
+                            name="correct"
+                            editingMode = {editingMode}/>
+                        <InputColumn bind:groupData idx={idx}
+                            intakeName = "intake_strip_count"
+                            finalName = "final_strip_count"
+                            overlayCounts = {true}
+                            warnOnDifferent = {true}
+                            enforceNumbers = {true}
+                            editingMode = {editingMode}/>
+                        <InputColumn bind:groupData idx={idx}
+                            intakeName = "intake_images_count"
+                            finalName = "final_images_count"
+                            overlayCounts = {true}
+                            warnOnDifferent = {true}
+                            enforceNumbers = {true}
+                            editingMode = {editingMode}/>
+                        <InputColumn bind:groupData idx={idx}
+                            intakeName = "intake_hs_count"
+                            finalName = "final_hs_count"
+                            overlayCounts = {true}
+                            warnOnDifferent = {true}
+                            enforceNumbers = {true}
+                            editingMode = {editingMode}/>
+                        <EditingColumn bind:groupData idx={idx}/>
+                        <TextColumn bind:groupData idx={idx}
+                            name="comments"
+                            widthName="comments"/>
+                        <ComputeColumn
+                            project_id = {data['group_number']}
+                            group_idx={idx}
+                            media_type="negatives"/>
+                    </ol>
+                    {#if i < Object.entries(negativesGroups).length - 1}
+                        <ListContainerLineBreak insertAtIdx={idx + 1}
+                            dotted={true}
+                            drawInsert={editingMode}/>
+                    {/if}
+                {/each}
+            </JobDisplay>
 
 
         {:else if $CurrentMainTab == "Video"}
-            <ol>
-                <TitleRow titles={widths.video}/>
-            </ol>
-            {#if maxGroupNumbers["video"] > 0}
-                <ListContainerLineBreak insertAtIdx=1
-                    drawInsert={editingMode}/>
-            {/if}
-            {#each Object.entries(videoGroups || {}) as [idx, groupData], i}
-                <ol>
-                    <TrashColumn idx={groupData['group_number']}
-                        editingMode = {editingMode}/>
-                    <IndexColumn bind:groupData idx={groupData['group_number']}
-                        name="group_number"
-                        editingMode = {editingMode}/>
-                    <DropdownColumn bind:groupData idx={groupData['group_number']}
-                        name="video_type"
-                        options={videoTypes}
-                        editingMode={editingMode}
-                        requireEditingMode={true}/>
-                    <TextColumn bind:groupData idx={groupData['group_number']}
-                        name="vcr"
-                        widthName="number"/>
-                    <TextColumn bind:groupData idx={groupData['group_number']}
-                        name="vcr"
-                        widthName="smallText"/>
-                    <TextColumn bind:groupData idx={groupData['group_number']}
-                        name="vcr"
-                        widthName="number"/>
-                    <EditingColumn bind:groupData idx={groupData['group_number']}/>
-                    <TextColumn bind:groupData idx={groupData['group_number']}
-                        name="comments"
-                        widthName="comments"/>
+            <JobDisplay name="video" maxGroupNumber={maxGroupNumbers["video"]} editingMode={editingMode}>
+                {#each Object.entries(videoGroups || {}) as [_, groupData], i}
+                    {@const idx = groupData['group_number']}
+                    <ol>
+                        <TrashColumn idx={idx}
+                            editingMode = {editingMode}/>
+                        <IndexColumn bind:groupData idx={idx}
+                            name="group_number"
+                            editingMode = {editingMode}/>
+                        <DropdownColumn bind:groupData idx={idx}
+                            name="video_type"
+                            options={videoTypes}
+                            editingMode={editingMode}
+                            requireEditingMode={true}/>
+                        <InputColumn bind:groupData idx={idx}
+                            intakeName = "est_dvd_number"
+                            finalName = "act_dvd_number"
+                            overlayCounts = {true}
+                            enforceNumbers = {true}
+                            editingMode = {editingMode}
+                            widthName = "smallText"/>
+                        <InputColumn bind:groupData idx={idx}
+                            finalName = "vcr"
+                            widthName = "smallText"/>
+                        <InputColumn bind:groupData idx={idx}
+                            finalName = "station_number"
+                            widthName = "smallText"
+                            enforceNumbers = {true}/>
+                        <EditingColumn bind:groupData idx={idx}/>
+                        <TextColumn bind:groupData idx={idx}
+                            name="comments"
+                            widthName="comments"/>
+                        <ComputeColumn
+                            project_id = {data['group_number']}
+                            group_idx={idx}
+                            media_type="video"/>
+                    </ol>
+                    {#if i < Object.entries(videoGroups).length - 1}
+                        <ListContainerLineBreak insertAtIdx={idx + 1}
+                            dotted={true}
+                            drawInsert={editingMode}/>
+                    {/if}
+                {/each}
+            </JobDisplay>
 
-                </ol>
-                {#if i < Object.entries(videoGroups).length - 1}
-                    <ListContainerLineBreak insertAtIdx={groupData['group_number'] + 1}
-                        dotted={true}
-                        drawInsert={editingMode}/>
-                {/if}
-            {/each}
-            <ListContainerLineBreak insertAtIdx={maxGroupNumbers["video"] + 1}
-                endOfContainerInsert = {true}
-                drawInsert={editingMode}/>
+            {:else if $CurrentMainTab == "Data"}
+                <JobDisplay name="data" maxGroupNumber={maxGroupNumbers["data"]} editingMode={editingMode}>
+                    {#each Object.entries(dataGroups || {}) as [_, groupData], i}
+                        {@const idx = groupData['group_number']}
+                        <ol>
+                            <TrashColumn idx={idx}
+                                editingMode = {editingMode}/>
+                            <IndexColumn bind:groupData idx={idx}
+                                name="group_number"
+                                editingMode = {editingMode}/>
+                            <DropdownColumn bind:groupData idx={idx}
+                                name="data_type"
+                                options={dataTypes}
+                                editingMode={editingMode}
+                                requireEditingMode={true}/>
+                            <EditingColumn bind:groupData idx={idx}/>
+                            <TextColumn bind:groupData idx={idx}
+                                name="comments"
+                                widthName="comments"/>
+                            <ComputeColumn
+                                project_id = {data['group_number']}
+                                group_idx={idx}
+                                media_type="data"/>
+                        </ol>
+                        {#if i < Object.entries(dataGroups).length - 1}
+                            <ListContainerLineBreak insertAtIdx={idx + 1}
+                                dotted={true}
+                                drawInsert={editingMode}/>
+                        {/if}
+                    {/each}
+                </JobDisplay>
+
 
         {:else}
             <p class="temp-message">{"There's no media assigned to this project yet."}</p> 
@@ -689,6 +733,7 @@
     {:else}
         <TempMessage message={error ? `No project with ID ${data.id} exists.` : "Loading..."} />
     {/if}
+
 </ListContainer>
 
 

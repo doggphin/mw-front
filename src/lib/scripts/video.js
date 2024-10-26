@@ -21,4 +21,5 @@ export let videoTypes = [
     "PAL U-matic",
     "PAL DVCAM",
     "PAL HD miniDV",
-]
+    "Other"
+];
