@@ -1,6 +1,6 @@
 <script>
     import { PageNameStore, CurrentMainTab, ProjectWebsocket, UpdateProject } from '$lib/scripts/mtd-store.js';
-    import { boolToChar, getRandom } from '$lib/scripts/helpers.js';
+    import { getRandom, characterComesBefore } from '$lib/scripts/helpers.js';
     import { handleUpdateEditingTag, addTempEditingTag, removeEditingTag } from "$lib/scripts/project.js";
     import { PUBLIC_IP_HTTP_BACKEND, PUBLIC_IP_WS_BACKEND } from '$env/static/public';
     import { widths, widthConsts } from './widthConsts.js';
@@ -9,6 +9,7 @@
     import { editingTypesToLabel } from "$lib/scripts/editing.js";
     import { videoTypes } from "$lib/scripts/video.js";
     import { dataTypes } from "$lib/scripts/data.js";
+    import { audioTypes } from "$lib/scripts/audio.js";
 
     import JobDisplay from "./components/JobDisplay.svelte";
     import ListContainer from '$lib/components/ListContainer.svelte';
@@ -22,6 +23,8 @@
     import TextColumn from './components/TextColumn.svelte';
     import EditingColumn from './components/EditingColumn.svelte';
     import ComputeColumn from './components/ComputeColumn.svelte';
+    import BlankColumn from './components/BlankColumn.svelte';
+    import StaticTextColumn from './components/StaticTextColumn.svelte';
 
     export let data;    // Gets page number from page.js
 
@@ -46,13 +49,16 @@
     $: negativesGroups = project?.["negatives_job"]?.["groups"];
     $: videoGroups = project?.["video_job"]?.["groups"];
     $: dataGroups = project?.["data_job"]?.["groups"];
+    $: audioGroups = project?.["audio_job"]?.["groups"];
     $: maxGroupNumbers = {
         "slides" : 0,
         "prints" : 0,
         "negatives" : 0,
         "video" : 0,
-        "groups" : 0
+        "data" : 0,
+        "audio" : 0
     }
+
     const jobDict = {
         "slides_job" : {
             TAB_NAME : "Slides",
@@ -78,6 +84,11 @@
             TAB_NAME : "Data",
             SHORT_NAME : "data",
             GROUPS : dataGroups
+        },
+        "audio_job" : {
+            TAB_NAME : "Audio",
+            SHORT_NAME : "audio",
+            GROUPS : audioGroups
         }
     }
 
@@ -93,6 +104,8 @@
                 return videoGroups;
             case 'data_job':
                 return dataGroups;
+            case 'audio_job':
+                return audioGroups;
             default:
                 return null;
         }
@@ -472,6 +485,7 @@
 </script>
 
 
+
 {#if project}
     <button style="position: absolute; right: 20px; top: 15px; z-index: 100; padding:5px;" 
     on:click={toggleEditingMode}>
@@ -725,6 +739,68 @@
                     {/each}
                 </JobDisplay>
 
+            {:else if $CurrentMainTab == "Audio"}
+            <JobDisplay name="audio" maxGroupNumber={maxGroupNumbers["audio"]} editingMode={editingMode}>
+                {#each Object.entries(audioGroups || {}) as [_, groupData], i}
+                    {@const idx = groupData['group_number']}
+                    {@const side = groupData['side']}
+                    {@const groupsWithSameGroupNumber = audioGroups.filter(function (o) {
+                        return o['group_number'] === idx;
+                    })}
+                    {@const isFirstSideInGroup = groupsWithSameGroupNumber.filter(function (o) {
+                        return characterComesBefore(o['side'], side);
+                    }).length == 0}
+                    {@const isLastSideInGroup = groupsWithSameGroupNumber.filter(function (o) {
+                        return characterComesBefore(side, o['side'])
+                    }).length == 0}
+
+                    
+                    <ol>
+                        {#if isFirstSideInGroup}
+                            <TrashColumn idx={idx}
+                                editingMode = {editingMode}/>
+                            <IndexColumn bind:groupData idx={idx}
+                                name = "group_number"
+                                editingMode = {editingMode}/>
+                            <DropdownColumn bind:groupData idx={idx}
+                                name = "audio_type"
+                                options = {audioTypes}
+                                requireEditingMode = {true}
+                                editingMode = {editingMode}/>
+                        {:else}
+                            <BlankColumn widthName = "index"/>
+                            <BlankColumn widthName = "dropdown"/>
+                        {/if}
+                        
+                        <StaticTextColumn bind:groupData
+                            name = "side"
+                            widthName = "smallText"/>
+                        <InputColumn bind:groupData idx={idx}
+                            finalName = "tracks"
+                            widthName = "smallText"
+                            enforceNumbers = {true}/>
+                        <EditingColumn bind:groupData idx={idx}/>
+                        <TextColumn bind:groupData idx={idx}
+                            name = "comments"
+                            widthName = "comments"/>
+                        
+                        {#if isFirstSideInGroup}
+                            <ComputeColumn
+                                project_id = {data['group_number']}
+                                group_idx = {idx}
+                                media_type = "slides"/>
+                        {:else}
+                            <BlankColumn widthName = "compute"/>
+                        {/if}
+                    </ol>
+
+                    {#if isLastSideInGroup && i < Object.entries(dataGroups).length - 1}
+                        <ListContainerLineBreak insertAtIdx={idx + 1}
+                            dotted={true}
+                            drawInsert={editingMode}/>
+                    {/if}
+                {/each}
+            </JobDisplay>
 
         {:else}
             <p class="temp-message">{"There's no media assigned to this project yet."}</p> 
@@ -735,6 +811,7 @@
     {/if}
 
 </ListContainer>
+
 
 
 <style>

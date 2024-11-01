@@ -14,18 +14,20 @@
 </script>
 
 
-<div class = "container" style="flex: {width} 0 {width}rem">
+<div style="flex: {width} 0 {width}rem">
     <button class="timer-container" alt="Timer Icon" title="Open Automatic File Actions"
-    on:click={openFinalCheckModal}>
-        <img style="width:100%; height:100%; background-color: none;" src={FolderWorkIcon} alt="Folder Work Icon"/>
+        on:click={openFinalCheckModal}>
+            <img style="width:100%; height:100%; background-color: none;" src={FolderWorkIcon} alt="Folder Work Icon"/>
     </button>
 </div>
 
 
 <style>
-    .container {
-        display: flex-right;
-        margin: 0 -2.5px;
+    button {
+        min-width: 0;
+    }
+    img {
+        min-width: 0;
     }
     .timer-container {
         width: 25px;

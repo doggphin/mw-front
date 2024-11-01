@@ -47,8 +47,9 @@
     {/each}
 
     <button class="editing-tag-container editing-tag-add-container"
-    on:click={addEditingTagAddRequest(idx)}
-    title="Add Editing Record">
+        on:click={addEditingTagAddRequest(idx)}
+        title="Add Editing Record"
+    >
         <img style="height:100%; margin: -5px; background-color: none;" src={AddIcon} alt="Add Icon"/>
     </button>
 
@@ -98,6 +99,9 @@
     }
     .editing-type {
         margin-right: 5px;
+        min-width: 0;
+        text-overflow: ellipsis;
+        overflow: hidden;
     }
 </style>
 

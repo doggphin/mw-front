@@ -1,4 +1,5 @@
 export let widthConsts = {
+    tiny : 1,
     index: 2,
     dropdown: 3,
     //
@@ -67,6 +68,17 @@ export const widths = {
         return {
             "#" : widthConsts.index,
             "Type" : widthConsts.dropdown,
+            "Editing" : widthConsts.editing,
+            "Comments" : widthConsts.comments,
+            "" : widthConsts.compute
+        }
+    },
+    get audio() {
+        return {
+            "#" : widthConsts.index,
+            "Type" : widthConsts.dropdown,
+            "Side" : widthConsts.smallText,
+            "# Tracks" : widthConsts.smallText,
             "Editing" : widthConsts.editing,
             "Comments" : widthConsts.comments,
             "" : widthConsts.compute

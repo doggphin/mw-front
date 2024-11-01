@@ -21,7 +21,7 @@
 
 
 {#if !requireEditingMode || editingMode}
-    <select 
+    <select class = "hide-text"
         style="flex: {width} 0 {width}rem;"
         on:change={(val) => updateValue(val)}
     >
@@ -34,7 +34,7 @@
         {/each}
     </select>
 {:else}
-    <div style="flex: {width} 0 {width}rem;">
+    <div class="hide-text" style="flex: {width} 0 {width}rem;">
         {groupData[name]}
     </div>
 {/if}
@@ -51,5 +51,10 @@
     }
     select:hover {
         background-color: var(--clr-primary-5-1);
+    }
+    .hide-text {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis; 
     }
 </style>
