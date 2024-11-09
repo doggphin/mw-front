@@ -10,13 +10,13 @@
     let addEditingTagDeleteRequest = getContext('addEditingTagDeleteRequest');
     let addEditingTagAddRequest = getContext('addEditingTagAddRequest');
 
-    export let idx, groupData;
+    export let groupPk, groupData;
 
     let width = widthConsts.editing;
     function openTimerModal(editingTag) {
-        openModal(EditingModal, { idx: idx, 
-            groupData: groupData, 
-            editingTag: editingTag, 
+        openModal(EditingModal, { groupPk: groupPk, 
+            groupData : groupData, 
+            editingTag : editingTag, 
             addEditingTagUpdateRequest : addEditingTagUpdateRequest,
             addEditingTagDeleteRequest : addEditingTagDeleteRequest
         });
@@ -34,7 +34,7 @@
         </button>
 
         <select class="editing-type"
-        on:change={(val) => addEditingTagUpdateRequest(idx, editingTag['id'], val.target.value, null)}>
+        on:change={(val) => addEditingTagUpdateRequest(groupPk, editingTag['id'], val.target.value, null)}>
             {#each editingTypes as editingType}
                 {#if editingType === editingTypesToLabel[editingTag["editing_type"]]}
                     <option value={editingType} selected>{editingType}</option>
@@ -47,7 +47,7 @@
     {/each}
 
     <button class="editing-tag-container editing-tag-add-container"
-        on:click={addEditingTagAddRequest(idx)}
+        on:click={addEditingTagAddRequest(groupPk)}
         title="Add Editing Record"
     >
         <img style="height:100%; margin: -5px; background-color: none;" src={AddIcon} alt="Add Icon"/>

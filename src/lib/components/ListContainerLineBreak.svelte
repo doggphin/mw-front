@@ -4,9 +4,9 @@
     export let dotted = false;
     export let drawInsert = false;
     export let endOfContainerInsert = false;
-    export let insertAtIdx;
+    export let insertAtGroupNumber;
 
-    let sendInsertIdxRequest = getContext("sendInsertIdxRequest");
+    let sendInsertGroupRequest = getContext("sendInsertGroupRequest");
 </script>
 
 
@@ -25,7 +25,7 @@
     {/if}
     <!-- If marked as an endOfContainerInsert, nudge the button down a bit to be flush with its container. -->
     <button class="insert-container noselect {endOfContainerInsert ? "insert-container-nudge-down" : ""}"
-    on:click={() => sendInsertIdxRequest(insertAtIdx)}
+    on:click={() => sendInsertGroupRequest(insertAtGroupNumber)}
     title="Add Row">
         <img style="width:100%; height:100%; scale: 175%; background-color: none;" src={Add} alt="AddIcon"/>
     </button>

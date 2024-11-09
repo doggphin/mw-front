@@ -1,20 +1,19 @@
 <script>
     import { widthConsts } from '../widthConsts.js';
-    export let project_id;
-    export let group_idx;
-    export let media_type = " ";
     import FolderWorkIcon from "$lib/assets/folder_data_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg";
-    let width = widthConsts.compute;
+
+    export let projectId, mediaType, groupPk;
+    export let widthName = "compute";
 
     import { openModal } from 'svelte-modals'
     import ComputeModal from './ComputeModal.svelte'
     function openFinalCheckModal() {
-        openModal(ComputeModal, {group_idx: group_idx, project_id: project_id, media_type: media_type})
+        openModal(ComputeModal, {projectId: projectId, mediaType: mediaType, groupPk: groupPk})
     }
 </script>
 
 
-<div style="flex: {width} 0 {width}rem">
+<div style="flex: {widthConsts[widthName]} 0 {widthConsts[widthName]}rem">
     <button class="timer-container" alt="Timer Icon" title="Open Automatic File Actions"
         on:click={openFinalCheckModal}>
             <img style="width:100%; height:100%; background-color: none;" src={FolderWorkIcon} alt="Folder Work Icon"/>

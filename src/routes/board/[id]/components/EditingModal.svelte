@@ -10,7 +10,7 @@
   //let addEditingTagUpdateRequest = getContext('addEditingTagUpdateRequest');
 
   export let isOpen;
-  export let idx, editingTag, addEditingTagUpdateRequest, addEditingTagDeleteRequest;
+  export let groupPk, groupData, editingTag, addEditingTagUpdateRequest, addEditingTagDeleteRequest;
 
   let isTicking = false;
 
@@ -20,7 +20,7 @@
   let hours = Math.floor((totalTime - minutes * 60 - seconds) / 3600);
 
   function addTimeUpdateRequestAndClose() {
-    addEditingTagUpdateRequest(idx, editingTag['id'], null, totalTime);
+    addEditingTagUpdateRequest(groupPk, editingTag['id'], null, totalTime);
     closeModal();
   }
 
@@ -88,7 +88,7 @@
   function stopClock(sendUpdate = true) {
     if(sendUpdate && isTicking) {
       updateTotalTimeFromMeasurements();
-      addEditingTagUpdateRequest(idx, editingTag['id'], null, totalTime);
+      addEditingTagUpdateRequest(groupPk, editingTag['id'], null, totalTime);
     }
     isTicking = false;
     clearInterval(clockInterval);
@@ -104,7 +104,7 @@
   // https://github.com/sveltejs/svelte/issues/5799 might be the culprit..?
   // TODO: export deleteEditingTag as a field to be set when creating the modal
   function deleteEditingTag() {
-    addEditingTagDeleteRequest(idx, editingTag["id"]);
+    addEditingTagDeleteRequest(groupPk, editingTag["id"]);
     closeModal();
   }
 </script>
@@ -114,7 +114,7 @@
   <div role="dialog" class="modal">
     <div class="contents">
 
-      <h2>{`Editing time for ${editingTypesToLabel[editingTag["editing_type"]]} of Group ${idx}`}</h2>
+      <h2>{`Editing time for ${editingTypesToLabel[editingTag["editing_type"]]} of Group ${groupData['group_number']}`}</h2>
 
       <div style="margin: 125px 80px;"> a clock should go here :)</div>
       <div class="time-inputs-container">

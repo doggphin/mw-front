@@ -8,7 +8,7 @@
     import { getKeyByValue } from "$lib/scripts/helpers.js";
     import { editingTypesToLabel } from "$lib/scripts/editing.js";
     import { videoTypes } from "$lib/scripts/video.js";
-    import { dataTypes } from "$lib/scripts/data.js";
+    import { dataTypes } from "$lib/scripts/data.js";``
     import { audioTypes } from "$lib/scripts/audio.js";
 
     import JobDisplay from "./components/JobDisplay.svelte";
@@ -30,7 +30,7 @@
 
     let error = false;
     let editingMode = false;
-    export let project;
+    let project = null;
     let tabsCache = [];
     // An identifier token is attached to modification requests to (until profiles are set up) determine what session sent it
     // If a frontend session receives an update, if it came from themselves, it is ignored, or in some situations, used to update temporary values.
@@ -44,129 +44,95 @@
         }
     };
 
-    $: slidesGroups = project?.["slides_job"]?.["groups"];
-    $: printsGroups = project?.["prints_job"]?.["groups"];
-    $: negativesGroups = project?.["negatives_job"]?.["groups"];
-    $: videoGroups = project?.["video_job"]?.["groups"];
-    $: dataGroups = project?.["data_job"]?.["groups"];
-    $: audioGroups = project?.["audio_job"]?.["groups"];
-    $: maxGroupNumbers = {
-        "slides" : 0,
-        "prints" : 0,
-        "negatives" : 0,
-        "video" : 0,
-        "data" : 0,
-        "audio" : 0
-    }
+    $: projectJobs = project?.["jobs"];
+    $: slidesGroups = projectJobs?.["slides"]?.["groups"];
+    $: printsGroups = projectJobs?.["prints"]?.["groups"];
+    $: negativesGroups = projectJobs?.["negatives"]?.["groups"];
+    $: videoGroups = projectJobs?.["video"]?.["groups"];
+    $: dataGroups = projectJobs?.["data"]?.["groups"];
+    $: audioGroups = projectJobs?.["audio"]?.["groups"];
 
     const jobDict = {
-        "slides_job" : {
+        "slides" : {
             TAB_NAME : "Slides",
-            SHORT_NAME : "slides",
-            GROUPS : slidesGroups
+            MAX_GROUP_NUMBER : 0
         },
-        "prints_job" : {
+        "prints" : {
             TAB_NAME : "Prints",
-            SHORT_NAME : "prints",
-            GROUPS : printsGroups
+            MAX_GROUP_NUMBER : 0
         },
-        "negatives_job" : {
+        "negatives" : {
             TAB_NAME : "Negatives",
-            SHORT_NAME : "negatives",
-            GROUPS : negativesGroups
+            MAX_GROUP_NUMBER : 0
         },
-        "video_job" : {
+        "video" : {
             TAB_NAME : "Video",
-            SHORT_NAME : "video",
-            GROUPS : videoGroups
+            MAX_GROUP_NUMBER : 0
         },
-        "data_job" : {
+        "data" : {
             TAB_NAME : "Data",
-            SHORT_NAME : "data",
-            GROUPS : dataGroups
+            MAX_GROUP_NUMBER : 0
         },
-        "audio_job" : {
+        "audio" : {
             TAB_NAME : "Audio",
-            SHORT_NAME : "audio",
-            GROUPS : audioGroups
+            MAX_GROUP_NUMBER : 0
         }
     }
 
-    function jobNameToGroups(job_name) {
-        switch(job_name) {
-            case 'slides_job':
+    function jobNameToGroups(jobName) {
+        switch (jobName) {
+            case "slides" :
                 return slidesGroups;
-            case 'prints_job':
+            case "prints":
                 return printsGroups;
-            case 'negatives_job':
+            case "negatives":
                 return negativesGroups;
-            case 'video_job':
+            case "video":
                 return videoGroups;
-            case 'data_job':
+            case "data":
                 return dataGroups;
-            case 'audio_job':
+            case "audio":
                 return audioGroups;
-            default:
-                return null;
         }
     }
 
-    function tabNameToJobName(tabName) {
-        for(const [key, value] of Object.entries(jobDict)) {
-            if(value['TAB_NAME'] == tabName) {
-                return key;
-            }
-        }
-        return null;
+    function getCurrentGroups() {
+        return jobNameToGroups($CurrentMainTab);
     }
 
-    function sortJobsByGroupNumber(resetTab = false) {
-        for(const [key, value] of Object.entries(jobDict)) {
-            // If project contains this job,
-            if(project.hasOwnProperty(key)) {
-                if(resetTab) {
-                    tabsCache.push(value["TAB_NAME"]);
-                }
-
-                // Sort received groups in each job type not only to display correctly, but also find the max group number value for each job
-                project[key]["groups"].sort((a, b) => {
-                    if (a["group_number"] < b["group_number"]) {
-                        return -1
-                    }
-                    if (a["group_number"] > b["group_number"]) {
-                        return 1;
-                    }
-                    return 0;
-                });
-
-                // Set the max group number for this job to 0 if no groups exist; otherwise find the max
-                maxGroupNumbers[value["SHORT_NAME"]] = project[key]["groups"].length > 0 ?
-                    project[key]["groups"].at(-1)["group_number"] :
-                    0
-                maxGroupNumbers = maxGroupNumbers; // Update page
-
-                project = project;
-            }
-        }
+    function getGroupsSortedByGroupNumber(groups) {
+        return groups ?
+            Object.entries(groups)?.sort((a, b) => a[1]['group_number'] - b[1]['group_number']) :
+            {}
     }
-    setContext("sortJobsByGroupNumber", sortJobsByGroupNumber);
 
     // Requests this project's jobs from the database
     async function getProjectData(resetTab = true) {
         if(resetTab) {
             tabsCache = [];
         }
+
         const endpoint = `${PUBLIC_IP_HTTP_BACKEND}/projects/${data.id}`;
         const response = await fetch(endpoint, {method: "GET"});
+
         if(response.status == 200) {
             project = await response.json();
 
             PageNameStore.set(project["formatted_project_name"]);
 
-            sortJobsByGroupNumber(resetTab);
+            for(const [jobName, jobData] of Object.entries(project['jobs'])) {
+                if(resetTab) {
+                    tabsCache.push(jobName);
+                }
+
+                jobDict[jobName].MAX_GROUP_NUMBER = Object.values(jobData['groups']).reduce((maxGroupNumber, groupToCheck) => {
+                    return Math.max(maxGroupNumber, groupToCheck['group_number']);
+                }, 0);
+            }
+
 
             if(tabsCache.length > 0 && resetTab) {
-                CurrentMainTab.set(tabsCache[0]);
+                CurrentMainTab.set(tabsCache[0].toLowerCase());
             }
         } else {
             PageNameStore.set("Error retrieving project");
@@ -178,38 +144,41 @@
     // When this page loads, reset the page name (will be set in getProjectData), reset the current tab and request this project's data
     onMount(async () => {
         PageNameStore.set("");
-        CurrentMainTab.set();
+        CurrentMainTab.set("");
         getProjectData();
     });
     
 
     // Adds an update to append to the list of updates to intermittently send to the server.
-    function addGroupUpdate(idx, col, val) {
+    function addGroupUpdate(groupPk, colName, val) {
         // Try to replace any previous updates with this update if possible
         for(let i=0; i<groupUpdateQueue.data.updates.length; i++) {         
-            if($CurrentMainTab == groupUpdateQueue.data.updates[i].job && idx === groupUpdateQueue.data.updates[i].idx && col === groupUpdateQueue.data.updates[i].col) {
-                groupUpdateQueue.data.updates[i].val = val;
+            if($CurrentMainTab == groupUpdateQueue.data.updates[i]['job_name']
+                && groupPk === groupUpdateQueue.data.updates[i]['group_pk']
+                && colName === groupUpdateQueue.data.updates[i]['col_name'])
+            {
+                groupUpdateQueue.data.updates[i]['val'] = val;
                 return;
             }
         }
         groupUpdateQueue.data.updates.push({
-            'job' : $CurrentMainTab,
-            'idx' : idx,
-            'col' : col,
+            'job_name' : $CurrentMainTab,
+            'group_pk' : groupPk,
+            'col_name' : colName,
             'val' : val
         });
     }
     setContext("addGroupUpdate", addGroupUpdate); 
 
     /*
-    Sends a JS object as a request to the server in JSON format.
+        Sends a JS object as a request to the server in JSON format.
     */
     function sendRequest(req) {
         $ProjectWebsocket.send(JSON.stringify(req));
     }
 
     /*
-    Sends the group update queue off to the server to update the database.
+        Sends the group update queue off to the server to update the database.
     */
     function sendGroupUpdates() {
         if(groupUpdateQueue.data.updates.length > 0) {
@@ -221,85 +190,60 @@
 
 
     /*
-    Called when the user attempts to change the group number of a group.
-    If this returns false, the user attempted to change its group number to something invalid.
-    Otherwise, add a request to change a group number from "from" to "to" to the server request queue, then return true.
+        Called when the user attempts to change the group number of a group.
+        If this returns false, the user attempted to change its group number to something invalid.
+        Otherwise, add a request to change a group number from "from" to "to" to the server request queue, then return true.
     */
-    function validateChangeGroupNumber(from, to) {
-        if(from == to) {
-            console.log("Trying to change index from and to current. Skipping...");
-            return true;
-        }
-        let jobName = tabNameToJobName($CurrentMainTab);
-        let groups = project[jobName]["groups"];
-        for (const group of groups) {
-            if(group["group_number"] == to) {
-                return false;
-            }
-        }
-        addGroupUpdate(from, "group_number", to);
+    function addChangeGroupNumberUpdate(groupId, toGroupNumber) {
+        addGroupUpdate(groupId, "group_number", toGroupNumber);
         return true;
-
-        // TODO:
-        // might be worthwhile to check through the update queue to check if already trying to change any index values,
-        // and if so, don't allow the change to go through
     }
-    setContext("validateChangeGroupNumber", validateChangeGroupNumber);
+    setContext("addChangeGroupNumberUpdate", addChangeGroupNumberUpdate);
 
 
     /*
-    Send a request to the server to insert a group at the specified index.
-    Logic for this is only done on the server (for now).
+        Send a request to the server to insert a group at the specified index.
+        Logic for this is only done on the server (for now).
     */
-    function sendInsertIdxRequest(idx) {
+    function sendInsertGroupRequest(atGroupNumber) {
         sendRequest({
             "type" : "insert_group",
             "data" : {
                 "token" : SESSION_TOKEN,
                 "job" : $CurrentMainTab,
-                "idx" : idx
+                "group_number" : atGroupNumber
             }
         });
     }
-    setContext("sendInsertIdxRequest", sendInsertIdxRequest);
+    setContext("sendInsertGroupRequest", sendInsertGroupRequest);
 
 
     /*
-    Send a request to the server to delete a group with the specified index.
-    Logic for this is only done on the server (for now).
+        Send a request to the server to delete a group with the specified index.
+        Logic for this is only done on the server (for now).
     */
-    function sendDeleteIdxRequest(idx) {
-        console.log("test");
+    function sendDeleteGroupByIdRequest(idToDelete) {
         sendRequest({
             "type" : "delete_group",
             "data" : {
                 "token" : SESSION_TOKEN,
                 "job" : $CurrentMainTab,
-                "idx" : idx
+                "id" : idToDelete
             }
         });
-        let jobName = tabNameToJobName($CurrentMainTab);
-        let groups = project[jobName]["groups"];
-        groups.forEach((item, index) => {
-            console.log("checking...");
-            if(item['group_number'] === idx) {
-                console.log("deleting");
-                groups.splice(index, 1);
-            }
-        });
-        project = project;
+        delete getCurrentGroups()[idToDelete];
     }
-    setContext("sendDeleteIdxRequest", sendDeleteIdxRequest);
+    setContext("sendDeleteGroupByIdRequest", sendDeleteGroupByIdRequest);
 
 
     /*
-    Adds an update editing tag request for the editing tag with ID "tagId" in group with group number "idx"
-    to the update queue for sending to the server.
-    
-    If editingType is null, it won't be included.
-    If time is null, it won't be included.
+        Adds an update editing tag request for the editing tag with ID "tagId" in group with id "id"
+        to the update queue for sending to the server.
+        
+        If editingType is null, it won't be included.
+        If time is null, it won't be included.
     */
-    function addEditingTagUpdateRequest(idx, tagId, editingType, time) {
+    function addEditingTagUpdateRequest(groupId, tagId, editingType, time) {
         /* Backend expects an update with the following format:
         {
             ...
@@ -323,13 +267,13 @@
             val["time"] = time;
         }
 
-        addGroupUpdate(idx, "editing_tags", val);
+        addGroupUpdate(groupId, "editing_tags", val);
     }
     setContext("addEditingTagUpdateRequest", addEditingTagUpdateRequest);
 
 
     /*
-    Updates the DOM to relay any nested object updates in the loaded project.
+        Updates the DOM to relay any nested object updates in the loaded project.
     */
     let updateProject = () => {
         project = project;
@@ -338,51 +282,107 @@
 
 
     /*
-    Sends a request to the server to add an editing tag for the currently
-    opened job for group "idx".
-    
-    Temporarily creates an editing tag with a random ID. When the server tells
-    clients a new editing tag is supposed to be added, this client updates its
-    temporary editing tag ID (which is randomly generated) with the new editing
-    tag's ID.
+        Sends a request to the server to add an editing tag for the currently
+        opened job for group "id".
+        
+        Temporarily creates an editing tag with a random ID. When the server tells
+        clients a new editing tag is supposed to be added, this client updates its
+        temporary editing tag ID (which is randomly generated) with the new editing
+        tag's ID.
     */
-    function addEditingTagAddRequest(idx) {
+    function addEditingTagAddRequest(groupId) {
         // Until a confirmation is received from the server, temporarily create a new editing tag and assign
         // it a random id.
         const randomTempId = getRandom(-2147483648, 0);
-        addGroupUpdate(idx, "editing_tags", {
-            "update_type" : "add",
-            "sender_temp_id" : randomTempId,
-        });
-        let groups = jobNameToGroups(tabNameToJobName($CurrentMainTab));
-        let group = groups.find(group => group['group_number'] == idx);
-        addTempEditingTag(group, randomTempId);
-        project = project;
+
+        addTempEditingTag(getCurrentGroups()[groupId], randomTempId);
+
+        addGroupUpdate(
+            groupId, 
+            "editing_tags", {
+                "update_type" : "add",
+                "sender_temp_id" : randomTempId
+            }
+        );
+
+        updateProject();
     }
     setContext("addEditingTagAddRequest", addEditingTagAddRequest);
 
 
     /*
-    Adds a request to update an editing tag in the currently opened job for group
-    "idx", with tag ID "tagID", to the update request cache.
+        Adds a request to update an editing tag in the currently opened job for group
+        "id", with tag ID "tagID", to the update request cache.
     */
-    function addEditingTagDeleteRequest(idx, tagId) {
-        addGroupUpdate(idx, "editing_tags", {
-            "update_type" : "delete",
-            "id" : tagId
-        });
-        let groups = jobNameToGroups(tabNameToJobName($CurrentMainTab));
-        let group = groups.find(group => group['group_number'] == idx);
-        removeEditingTag(group, tagId);
+    function addEditingTagDeleteRequest(groupId, editingTagId) {
+        let group = getCurrentGroups()[groupId];
+        
+        removeEditingTag(group, editingTagId);
+
+        addGroupUpdate(
+            id, 
+            "editing_tags", {
+                "update_type" : "delete",
+                "id" : editingTagId
+            }
+        );
     }
     setContext("addEditingTagDeleteRequest", addEditingTagDeleteRequest);
 
 
-    // Websocket stuff
-    if($ProjectWebsocket != null) {
-        $ProjectWebsocket.close();
+    function handleReceiveGroupUpdate(msg) {
+        // Unpack message
+        let groupPk = msg['group_pk'];
+        let colName = msg['col_name'];
+        let val = msg['val'];
+        let token = msg['token'];
+        let jobName = msg['job_name'];
+
+        let group = jobNameToGroups(jobName)[groupPk];
+
+        if (group) {
+            switch(colName) {
+                case 'editing_tags':
+                    handleUpdateEditingTag(group, val, token, SESSION_TOKEN);
+                    break;
+                default:
+                    // If the token on this update is the same as my current token, that means I sent it, so it can be ignored
+                    if(token === SESSION_TOKEN) {
+                        return;
+                    }
+                    group[colName] = val;
+                    break;
+            }
+
+            updateProject();  // Update DOM
+        } else {
+            console.log("Error reading websocket message : Invalid job!");
+        }
     }
+
+
+    function handleReceiveGroupDelete(receivedJson) {
+        let token = receivedJson['token'];
+        let id = receivedJson['id'];
+        let job = receivedJson['job'];
+
+        if(SESSION_TOKEN == token) {
+            console.log("Ignoring a delete request sent from this client.");
+            return;
+        }
+
+        delete jobNameToGroups(job)[groupPk];
+
+        updateProject();
+    }
+
     ProjectWebsocket.set(new WebSocket(`${PUBLIC_IP_WS_BACKEND}/ws/project/${data.id}/`));
+    function createWebsocketConnection() {
+        if($ProjectWebsocket != null) {
+            $ProjectWebsocket.close();
+        }
+        ProjectWebsocket.set(new WebSocket(`${PUBLIC_IP_WS_BACKEND}/ws/project/${data.id}/`));
+    }
     $ProjectWebsocket.onclose = (e) => {
         console.log('Websocket connection closed! Attempting to reconnect...');
         ProjectWebsocket.set(new WebSocket(`${PUBLIC_IP_WS_BACKEND}/ws/project/${data.id}/`));
@@ -390,66 +390,20 @@
     $ProjectWebsocket.onopen = (e) => {
         console.log("Websocket connection opened!");
     };
-    function handleProjectUpdateIdx(msg) {
-        console.log(`Receiving an update for ${msg['idx']}`);
-        // If the token on this update is the same as my current token, that means I sent it, so it can be ignored
-
-        let idx = msg['idx'];
-        let col = msg['col'];
-        let val = msg['val'];
-        let groups = jobNameToGroups(msg['job']);
-        let group = groups.find(o => o["group_number"] == idx);
-        if (group) {
-            switch(msg['col']) {
-                case 'editing_tags':
-                    handleUpdateEditingTag(group, val, msg['token'], SESSION_TOKEN);
-                    break;
-                default:
-                    if(msg['token'] === SESSION_TOKEN) {
-                        return;
-                    }
-                    group[col] = val;
-                    break;
-            }
-            project = project;  // Update DOM
-        } else {
-            console.log("Error reading websocket message : Invalid job!");
-        }
-    }
-    function handleProjectDeleteIdx(msg) {
-        console.log(`Receiving a delete command for ${msg['idx']}`);
-
-        let token = msg['token']
-
-        if(SESSION_TOKEN == token) {
-            console.log("Received a command to delete a group already deleted on client. Ignoring.");
-            return;
-        }
-
-        let idx = msg['idx'];
-        let job = msg['job'];
-        console.log(`Deleting idx ${idx} and job ${job}`);
-        let groups = jobNameToGroups(job);
-        groups.forEach((item, index) => {
-            if (item['group_number'] === idx) {
-                groups.splice(index, 1);
-                return;
-            }
-        });
-        project = project;
-    }
     $ProjectWebsocket.onmessage = (event) => {
         try {
             const event_json = JSON.parse(event.data);
             const msg = event_json['message'];
+
             switch(event_json['type']) {
 
-                case "projects.update_idx":
-                    handleProjectUpdateIdx(msg);
+                case "projects.update_group":
+                    console.log("Received!");
+                    handleReceiveGroupUpdate(msg);
                     break;
                 
                 case "projects.delete_group":
-                    handleProjectDeleteIdx(msg);
+                    handleReceiveGroupDelete(msg);
                     break;
 
                 case "projects.force_update": //TODO : don't do this. introduces a shitton of lag
@@ -461,6 +415,8 @@
             console.log(`Error reading websocket message : ${e}`);
         }
     };
+
+
     onDestroy(() => {       // Close websocket when going to another page
         if($ProjectWebsocket.readyState === 1) {
             $ProjectWebsocket.close();
@@ -482,6 +438,7 @@
     function toggleEditingMode() {
         editingMode = !editingMode;
     }
+
 </script>
 
 
@@ -495,321 +452,167 @@
 
 <ListContainer minWidthRem={listContainerMinWidthRem} minWidthPx={listContainerMinWidthPx} tabs={tabsCache}>
     {#if project}
+        <JobDisplay
+            name={$CurrentMainTab}
+            maxGroupNumber={jobDict[$CurrentMainTab].MAX_GROUP_NUMBER}
+            editingMode={editingMode}
+        >
+            {@const sortedGroups = getGroupsSortedByGroupNumber(getCurrentGroups())}
+            {#each sortedGroups as [groupPk, groupData], i}
+                {@const groupNumber = groupData['group_number']}
+                
+                <!-- These only matter if the current job is audio; hacky solution, this is done to increase variable scope -->
+                {@const isAudio = $CurrentMainTab == "audio"}
+                {@const mySide = isAudio ? groupData['side'] : null}
+                {@const otherSides = isAudio ? Object.entries(audioGroups).reduce(
+                    (acc, [otherGroupPk, otherGroupData]) => {
+                        if(otherGroupPk != groupPk && otherGroupData['group_number'] == groupNumber) {
+                            acc.push(otherGroupData['side']);
+                        }
+                        return acc;
+                    }, []) : null}
+                {@const isFirstSideInGroup = isAudio ? !otherSides.some(otherSide => 
+                    characterComesBefore(otherSide, mySide)
+                ) : null}
+                {@const isLastSideInGroup = isAudio ? !otherSides.some(otherSide => 
+                    characterComesBefore(mySide, otherSide)
+                ) : null}
 
-        {#if $CurrentMainTab == "Slides" && slidesGroups}
-            <JobDisplay name="slides" maxGroupNumber={maxGroupNumbers["slides"]} editingMode={editingMode}>
-                {#each Object.entries(slidesGroups || {}) as [_, groupData], i}
-                    {@const idx = groupData['group_number']}
-                    <ol>
-                        <TrashColumn idx={idx}
-                            editingMode={editingMode}/>
-                        <IndexColumn bind:groupData idx={idx}
-                            name="group_number"
-                            editingMode = {editingMode}/>
-                        <DropdownColumn bind:groupData idx={idx}
-                            name="dpi"
-                            options={[1250, 2500, 5000]}
-                            editingMode={editingMode}
-                            requireEditingMode={true}/>
-                        <YNColumn bind:groupData idx={idx}
-                            name="correct"
-                            defaultTo={"N"}
-                            editingMode = {editingMode}/>
-                        <InputColumn bind:groupData idx={idx}
-                            intakeName="intake_scanner_count"
-                            finalName="final_scanner_count"
-                            overlayCounts = {true}
-                            warnOnDifferent = {true}
-                            enforceNumbers = {true}
-                            editingMode={editingMode}/>
-                        <InputColumn bind:groupData idx={idx}
-                            intakeName="intake_scanner_count"
-                            finalName="final_hs_count"
-                            overlayCounts = {true}
-                            warnOnDifferent = {true}
-                            enforceNumbers = {true}
-                            editingMode={editingMode}/>
-                        <EditingColumn bind:groupData idx={idx}/>
-                        <TextColumn bind:groupData idx={idx}
-                            name="comments"
-                            widthName="comments"/>
-                        <ComputeColumn
-                            project_id = {data['group_number']}
-                            group_idx={idx}
-                            media_type="slides"/>
-                    </ol>
-                    {#if i < Object.entries(slidesGroups).length - 1}
-                        <ListContainerLineBreak insertAtIdx={idx + 1} dotted={true}
-                            drawInsert={editingMode}/>
+                <ol>
+                    <!-- Audio is handled differently; these are added manually there -->
+                    {#if !isAudio}
+                        <TrashColumn groupPk={groupPk} editingMode={editingMode}/>
+                        <IndexColumn bind:groupData groupPk={groupPk} editingMode = {editingMode}/>
                     {/if}
-                {/each}
-            </JobDisplay>
+                        
+                    {#if $CurrentMainTab == "slides" && slidesGroups}
+                        <DropdownColumn bind:groupData groupPk={groupPk}
+                            colName="dpi"
+                            options={[1250, 2500, 5000]} editingMode={editingMode} requireEditingMode={true}/>
+                        <YNColumn bind:groupData groupPk={groupPk}
+                            colName="correct" defaultTo={"N"} editingMode = {editingMode}/>
+                        <InputColumn bind:groupData groupPk={groupPk}
+                            intakeName="intake_scanner_count"
+                            finalName="final_scanner_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode={editingMode}/>
+                        <InputColumn bind:groupData groupPk={groupPk}
+                            intakeName="intake_scanner_count"
+                            finalName="final_hs_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode={editingMode}/>
 
 
-        {:else if $CurrentMainTab == "Prints"}
-            <JobDisplay name="prints" maxGroupNumber={maxGroupNumbers["prints"]} editingMode={editingMode}>
-                {#each Object.entries(printsGroups || {}) as [_, groupData], i}
-                    {@const idx = groupData['group_number']}
-                    <ol>
-                        <TrashColumn idx={idx}
-                            editingMode = {editingMode}/>
-                        <IndexColumn bind:groupData idx={idx}
-                            name="group_number"
-                            editingMode = {editingMode}/>
-                        <DropdownColumn bind:groupData idx={idx}
+                    {:else if $CurrentMainTab == "prints"}
+                        {@const groupNumber = groupData['group_number']}
+                        <DropdownColumn bind:groupData groupPk={groupPk}
                             options={[300, 600, 1200]}
-                            name="dpi"
-                            editingMode = {editingMode}
-                            requireEditingMode={true}/>
-                        <YNColumn bind:groupData idx={idx}
-                            defaultTo={"N"}
-                            name="correct"
-                            editingMode = {editingMode}/>
-                        <InputColumn bind:groupData idx={idx}
+                            colName="dpi" editingMode = {editingMode} requireEditingMode={true}/>
+                        <YNColumn bind:groupData groupPk={groupPk} defaultTo={"N"}
+                            colName="correct" editingMode = {editingMode}/>
+                        <InputColumn bind:groupData groupPk={groupPk}
                             intakeName="intake_lp_count"
-                            finalName="final_lp_count"
-                            overlayCounts = {true}
-                            warnOnDifferent = {true}
-                            enforceNumbers = {true}
-                            editingMode = {editingMode}/>
-                        <InputColumn bind:groupData idx={idx}
+                            finalName="final_lp_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode = {editingMode}/>
+                        <InputColumn bind:groupData groupPk={groupPk}
                             intakeName="intake_hs_count"
-                            finalName="final_hs_count"
-                            overlayCounts = {true}
-                            warnOnDifferent = {true}
-                            enforceNumbers = {true}
-                            editingMode = {editingMode}/>
-                        <InputColumn bind:groupData idx={idx}
+                            finalName="final_hs_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode = {editingMode}/>
+                        <InputColumn bind:groupData groupPk={groupPk}
                             intakeName="intake_oshs_count"
-                            finalName="final_oshs_count"
-                            overlayCounts = {true}
-                            warnOnDifferent = {true}
-                            enforceNumbers = {true}
-                            editingMode = {editingMode}/>
-                        <EditingColumn bind:groupData idx={idx}/>
-                        <TextColumn bind:groupData idx={idx}
-                            name="comments"
-                            widthName="comments"/>
-                        <ComputeColumn
-                            project_id = {data['group_number']}
-                            group_idx={idx}
-                            media_type="prints"/>
-                    </ol>
-                    {#if i < Object.entries(printsGroups).length - 1}
-                        <ListContainerLineBreak insertAtIdx={idx + 1} dotted={true}
-                            drawInsert={editingMode}/>
-                    {/if}
-                {/each}
-            </JobDisplay>
+                            finalName="final_oshs_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode = {editingMode}/>
 
 
-        {:else if $CurrentMainTab == "Negatives"}
-            <JobDisplay name="negatives" maxGroupNumber={maxGroupNumbers["negatives"]} editingMode={editingMode}>
-                {#each Object.entries(negativesGroups || {}) as [_, groupData], i}
-                    {@const idx = groupData['group_number']}
-                    <ol>
-                        <TrashColumn idx={idx}
-                            editingMode = {editingMode}/>
-                        <IndexColumn bind:groupData idx={idx}
-                            name="group_number"
-                            editingMode = {editingMode}/>
-                        <DropdownColumn bind:groupData idx={idx}
+                    {:else if $CurrentMainTab == "negatives"}
+                        <DropdownColumn bind:groupData groupPk={groupPk}
                             options={[1250, 1500, 2500, 3000, 4000, 5000]}
-                            name="dpi"
-                            editingMode = {editingMode}
+                            colName="dpi" editingMode = {editingMode}
                             requireEditingMode={true}/>
-                        <YNColumn bind:groupData idx={idx}
-                            defaultTo={"N"}
-                            name="correct"
-                            editingMode = {editingMode}/>
-                        <InputColumn bind:groupData idx={idx}
+                        <YNColumn bind:groupData groupPk={groupPk} defaultTo={"N"}
+                            colName="correct" editingMode = {editingMode}/>
+                        <InputColumn bind:groupData groupPk={groupPk}
                             intakeName = "intake_strip_count"
-                            finalName = "final_strip_count"
-                            overlayCounts = {true}
-                            warnOnDifferent = {true}
-                            enforceNumbers = {true}
-                            editingMode = {editingMode}/>
-                        <InputColumn bind:groupData idx={idx}
+                            finalName = "final_strip_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode = {editingMode}/>
+                        <InputColumn bind:groupData groupPk={groupPk}
                             intakeName = "intake_images_count"
-                            finalName = "final_images_count"
-                            overlayCounts = {true}
-                            warnOnDifferent = {true}
-                            enforceNumbers = {true}
-                            editingMode = {editingMode}/>
-                        <InputColumn bind:groupData idx={idx}
+                            finalName = "final_images_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode = {editingMode}/>
+                        <InputColumn bind:groupData groupPk={groupPk}
                             intakeName = "intake_hs_count"
-                            finalName = "final_hs_count"
-                            overlayCounts = {true}
-                            warnOnDifferent = {true}
-                            enforceNumbers = {true}
-                            editingMode = {editingMode}/>
-                        <EditingColumn bind:groupData idx={idx}/>
-                        <TextColumn bind:groupData idx={idx}
-                            name="comments"
-                            widthName="comments"/>
-                        <ComputeColumn
-                            project_id = {data['group_number']}
-                            group_idx={idx}
-                            media_type="negatives"/>
-                    </ol>
-                    {#if i < Object.entries(negativesGroups).length - 1}
-                        <ListContainerLineBreak insertAtIdx={idx + 1}
-                            dotted={true}
-                            drawInsert={editingMode}/>
-                    {/if}
-                {/each}
-            </JobDisplay>
+                            finalName = "final_hs_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode = {editingMode}/>
 
-
-        {:else if $CurrentMainTab == "Video"}
-            <JobDisplay name="video" maxGroupNumber={maxGroupNumbers["video"]} editingMode={editingMode}>
-                {#each Object.entries(videoGroups || {}) as [_, groupData], i}
-                    {@const idx = groupData['group_number']}
-                    <ol>
-                        <TrashColumn idx={idx}
-                            editingMode = {editingMode}/>
-                        <IndexColumn bind:groupData idx={idx}
-                            name="group_number"
-                            editingMode = {editingMode}/>
-                        <DropdownColumn bind:groupData idx={idx}
-                            name="video_type"
-                            options={videoTypes}
-                            editingMode={editingMode}
-                            requireEditingMode={true}/>
-                        <InputColumn bind:groupData idx={idx}
+                    {:else if $CurrentMainTab == "video"}
+                        <DropdownColumn bind:groupData groupPk={groupPk}
+                            colName="video_type" options={videoTypes} editingMode={editingMode} requireEditingMode={true}/>
+                        <InputColumn bind:groupData groupPk={groupPk}
                             intakeName = "est_dvd_number"
-                            finalName = "act_dvd_number"
-                            overlayCounts = {true}
-                            enforceNumbers = {true}
-                            editingMode = {editingMode}
-                            widthName = "smallText"/>
-                        <InputColumn bind:groupData idx={idx}
+                            finalName = "act_dvd_number" overlayCounts = {true} enforceNumbers = {true} editingMode = {editingMode} widthName = "smallText"/>
+                        <InputColumn bind:groupData groupPk={groupPk}
                             finalName = "vcr"
                             widthName = "smallText"/>
-                        <InputColumn bind:groupData idx={idx}
-                            finalName = "station_number"
-                            widthName = "smallText"
-                            enforceNumbers = {true}/>
-                        <EditingColumn bind:groupData idx={idx}/>
-                        <TextColumn bind:groupData idx={idx}
-                            name="comments"
-                            widthName="comments"/>
-                        <ComputeColumn
-                            project_id = {data['group_number']}
-                            group_idx={idx}
-                            media_type="video"/>
-                    </ol>
-                    {#if i < Object.entries(videoGroups).length - 1}
-                        <ListContainerLineBreak insertAtIdx={idx + 1}
-                            dotted={true}
-                            drawInsert={editingMode}/>
-                    {/if}
-                {/each}
-            </JobDisplay>
+                        <InputColumn bind:groupData groupPk={groupPk}
+                            finalName = "station_number" widthName = "smallText" enforceNumbers = {true}/>
 
-            {:else if $CurrentMainTab == "Data"}
-                <JobDisplay name="data" maxGroupNumber={maxGroupNumbers["data"]} editingMode={editingMode}>
-                    {#each Object.entries(dataGroups || {}) as [_, groupData], i}
-                        {@const idx = groupData['group_number']}
-                        <ol>
-                            <TrashColumn idx={idx}
-                                editingMode = {editingMode}/>
-                            <IndexColumn bind:groupData idx={idx}
-                                name="group_number"
-                                editingMode = {editingMode}/>
-                            <DropdownColumn bind:groupData idx={idx}
-                                name="data_type"
-                                options={dataTypes}
-                                editingMode={editingMode}
-                                requireEditingMode={true}/>
-                            <EditingColumn bind:groupData idx={idx}/>
-                            <TextColumn bind:groupData idx={idx}
-                                name="comments"
-                                widthName="comments"/>
-                            <ComputeColumn
-                                project_id = {data['group_number']}
-                                group_idx={idx}
-                                media_type="data"/>
-                        </ol>
-                        {#if i < Object.entries(dataGroups).length - 1}
-                            <ListContainerLineBreak insertAtIdx={idx + 1}
-                                dotted={true}
-                                drawInsert={editingMode}/>
-                        {/if}
-                    {/each}
-                </JobDisplay>
+                    {:else if $CurrentMainTab == "data"}
+                        <DropdownColumn bind:groupData groupPk={groupPk}
+                            colName="data_type" options={dataTypes} editingMode={editingMode} requireEditingMode={true}/>
 
-            {:else if $CurrentMainTab == "Audio"}
-            <JobDisplay name="audio" maxGroupNumber={maxGroupNumbers["audio"]} editingMode={editingMode}>
-                {#each Object.entries(audioGroups || {}) as [_, groupData], i}
-                    {@const idx = groupData['group_number']}
-                    {@const side = groupData['side']}
-                    {@const groupsWithSameGroupNumber = audioGroups.filter(function (o) {
-                        return o['group_number'] === idx;
-                    })}
-                    {@const isFirstSideInGroup = groupsWithSameGroupNumber.filter(function (o) {
-                        return characterComesBefore(o['side'], side);
-                    }).length == 0}
-                    {@const isLastSideInGroup = groupsWithSameGroupNumber.filter(function (o) {
-                        return characterComesBefore(side, o['side'])
-                    }).length == 0}
 
-                    
-                    <ol>
+                    {:else if $CurrentMainTab == "audio"}
                         {#if isFirstSideInGroup}
-                            <TrashColumn idx={idx}
-                                editingMode = {editingMode}/>
-                            <IndexColumn bind:groupData idx={idx}
-                                name = "group_number"
-                                editingMode = {editingMode}/>
-                            <DropdownColumn bind:groupData idx={idx}
-                                name = "audio_type"
-                                options = {audioTypes}
-                                requireEditingMode = {true}
-                                editingMode = {editingMode}/>
+                            <TrashColumn groupPk={groupPk} editingMode = {editingMode}/>
+                            <IndexColumn bind:groupData groupPk={groupPk} editingMode = {editingMode}/>
+                            <DropdownColumn bind:groupData groupPk={groupPk}
+                                colName = "audio_type" options = {audioTypes} requireEditingMode = {true} editingMode = {editingMode}/>
                         {:else}
                             <BlankColumn widthName = "index"/>
                             <BlankColumn widthName = "dropdown"/>
                         {/if}
                         
                         <StaticTextColumn bind:groupData
-                            name = "side"
+                            colName = "side"
                             widthName = "smallText"/>
-                        <InputColumn bind:groupData idx={idx}
+                        <InputColumn bind:groupData groupPk={groupPk}
                             finalName = "tracks"
-                            widthName = "smallText"
-                            enforceNumbers = {true}/>
-                        <EditingColumn bind:groupData idx={idx}/>
-                        <TextColumn bind:groupData idx={idx}
-                            name = "comments"
-                            widthName = "comments"/>
+                            widthName = "smallText" enforceNumbers = {true}/>
+                        <EditingColumn bind:groupData
+                            groupPk={groupPk}/>
+                        <TextColumn bind:groupData groupPk={groupPk}
+                            colName = "comments" widthName = "comments"/>
                         
                         {#if isFirstSideInGroup}
                             <ComputeColumn
-                                project_id = {data['group_number']}
-                                group_idx = {idx}
-                                media_type = "slides"/>
+                                projectId = {data['group_number']}
+                                groupPk = {groupPk}
+                                mediaType = "slides"/>
                         {:else}
                             <BlankColumn widthName = "compute"/>
                         {/if}
-                    </ol>
 
-                    {#if isLastSideInGroup && i < Object.entries(dataGroups).length - 1}
-                        <ListContainerLineBreak insertAtIdx={idx + 1}
-                            dotted={true}
-                            drawInsert={editingMode}/>
+                    {:else}
+                        <TempMessage message = {`No groups have been assigned to this project's ${$CurrentMainTab} job yet!`}/>
                     {/if}
-                {/each}
-            </JobDisplay>
-
-        {:else}
-            <p class="temp-message">{"There's no media assigned to this project yet."}</p> 
-        {/if}
+                
+                <!-- Audio tab doesn't always include these -->
+                {#if !isAudio}
+                    <EditingColumn bind:groupData={groupData}
+                        groupPk = {groupPk}/>
+                    <TextColumn bind:groupData groupPk={groupPk}
+                        colName="comments" widthName="comments"/>
+                    <ComputeColumn
+                        projectId = {data['group_number']}
+                        groupPk = {groupPk}
+                        mediaType = {$CurrentMainTab}/>
+                {/if}
+            </ol>
+            
+            <!-- Audio tab final line break is handled differently -->
+            {#if i < Object.entries(getCurrentGroups()).length - 1 && (!isAudio || isLastSideInGroup)}
+                <ListContainerLineBreak
+                    insertAtGroupNumber={groupNumber + 1}
+                    dotted={true}
+                    drawInsert={editingMode}/>
+            {/if}
+            
+        {/each}
+    </JobDisplay>
 
     {:else}
-        <TempMessage message={error ? `No project with ID ${data.id} exists.` : "Loading..."} />
+        <TempMessage message={error ? `No project with ID ${data.id} exists.` : "Loading..."}/>
     {/if}
-
 </ListContainer>
 
 
@@ -820,5 +623,9 @@
         align-items: center;
         column-gap: 10px;
         padding: 7.5px 10px;
+    }
+    p {
+        padding: 10px;
+        text-align: center;
     }
 </style>

@@ -1,15 +1,15 @@
 <script>
     import { getContext } from 'svelte';
     import Trash from "$lib/assets/delete_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg";
-    export let idx;
+    export let groupPk;
     export let editingMode = false;
 
-    let sendDeleteIdxRequest = getContext("sendDeleteIdxRequest");
+    let sendDeleteGroupByIdRequest = getContext("sendDeleteGroupByIdRequest");
 </script>
 
 {#if editingMode}
     <button class="little-button-container trash-container"
-    on:click={() => sendDeleteIdxRequest(idx)}
+    on:click={() => sendDeleteGroupByIdRequest(groupPk)}
     title="Delete Row">
         <img style="width:100%; height:100%; background-color: none; size: 200%" src={Trash} alt="Timer Icon"/>
     </button>

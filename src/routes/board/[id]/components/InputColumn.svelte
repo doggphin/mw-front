@@ -3,7 +3,7 @@
     import { widthConsts } from '../widthConsts.js';
     let addGroupUpdate = getContext('addGroupUpdate');
 
-    export let idx, groupData, finalName;
+    export let groupPk, groupData, finalName;
     export let intakeName = null;
     export let editingMode = false;
     export let overlayCounts = false;
@@ -68,13 +68,13 @@
             } else {
                 groupData[currentIdentifier] = resultStr;
             }
-            addGroupUpdate(idx, currentIdentifier, result ? result : 0);    // why the fudge not just send "result"???
+            addGroupUpdate(groupPk, currentIdentifier, result ? result : 0);    // why the fudge not just send "result"???
             color = warnOnDifferent ?
                 getColor(groupData[finalName], groupData[intakeName])
                 : "var(--clr-primary-5)";
 
         } else {
-            addGroupUpdate(idx, currentIdentifier, value.target.value.toString());
+            addGroupUpdate(groupPk, currentIdentifier, value.target.value.toString());
             color = "var(--clr-primary-5)";
         }
     }

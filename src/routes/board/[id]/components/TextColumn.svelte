@@ -3,12 +3,12 @@
     import { widthConsts } from '../widthConsts.js';
     let addGroupUpdate = getContext('addGroupUpdate');
 
-    export let idx, groupData, name, widthName;
+    export let groupPk, groupData, colName, widthName;
     let width = widthConsts[widthName];
 
     function onChange(val) {
-        addGroupUpdate(idx, name, val);
-        groupData[name] = val;
+        addGroupUpdate(groupPk, colName, val);
+        groupData[colName] = val;
     }
 </script>
 
@@ -18,9 +18,9 @@
     style="flex: {width} 0 {width}rem; max-width: {width}"
     spellcheck="false"
     on:input={(e) => onChange(e.target.textContent)}
-    textContent={groupData[name] ?? ""}
+    textContent={groupData[colName] ?? ""}
 >
-    {groupData[name] ?? ""}
+    {groupData[colName] ?? ""}
 </span>
 
 

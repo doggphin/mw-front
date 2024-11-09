@@ -4,7 +4,7 @@
     let validateChangeGroupNumber = getContext('validateChangeGroupNumber');
     let sortJobsByGroupNumber = getContext('sortJobsByGroupNumber');
 
-    export let idx, groupData, name;
+    export let groupPk, groupData;
     export let editingMode = false;
     let width = widthConsts.index;
 
@@ -18,9 +18,9 @@
         let resultStr = result ? result : '';
 
         // Check if this value is valid 
-        if(validateChangeGroupNumber(idx, resultStr)) {
+        if(validateChangeGroupNumber(groupPk, resultStr)) {
             value.target.value = resultStr;
-            groupData[name] = resultStr;
+            groupData["group_number"] = resultStr;
             groupData = groupData;
             sortJobsByGroupNumber(false);
             console.log("Changed successfully!");
@@ -34,13 +34,13 @@
 {#if editingMode}
     <input
         style="flex: {width} 0 {width}rem;"
-        placeholder={idx}
-        value={idx}
+        placeholder={groupData['group_number']}
+        value={groupData['group_number']}
         on:change={(val) => {tryUpdateIndex(val)}}
     >
 {:else}
     <div style="flex: {width} 0 {width}rem;">
-        {idx}
+        {groupData['group_number']}
     </div>
 {/if}
 

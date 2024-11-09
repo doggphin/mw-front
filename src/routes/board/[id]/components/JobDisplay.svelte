@@ -11,16 +11,16 @@
     <TitleRow titles={widths[name]}/>
 </ol>
 {#if maxGroupNumber > 0}
-    <ListContainerLineBreak insertAtIdx=1
+    <ListContainerLineBreak insertAtGroupNumber=1
         drawInsert={editingMode}
     />
 {/if}
 
 <slot/>
 
-<ListContainerLineBreak insertAtIdx={maxGroupNumber + 1}
+<ListContainerLineBreak insertAtGroupNumber = { maxGroupNumber + 1}
     endOfContainerInsert = {true}
-    drawInsert={editingMode}
+    drawInsert = {editingMode}
 />
 
 

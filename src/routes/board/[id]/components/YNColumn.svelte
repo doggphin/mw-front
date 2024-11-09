@@ -4,18 +4,18 @@
     import { widthConsts } from '../widthConsts.js';
     let addGroupUpdate = getContext('addGroupUpdate');
 
-    export let idx, defaultTo, name, groupData;
+    export let groupPk, defaultTo, colName, groupData;
     export let editingMode = false;
 
     // console.log(defaultTo);
-    /* on:change={} (val) => sendUpdate(idx, name, val.target.value)*/
+    /* on:change={} (val) => sendUpdate(groupPk, name, val.target.value)*/
 
     let width = widthConsts.corr;
 
     function updateValue(value) {
         let target = value.target.value.toString();
         let charTyped = target.slice(-1).toUpperCase();
-        let original = groupData[name];
+        let original = groupData[colName];
         let changeTo = false;
         switch(charTyped) {
             case 'Y':
@@ -25,13 +25,13 @@
                 changeTo = false;
                 break;
             default:
-                groupData[name] = original;
+                groupData[colName] = original;
                 value.target.value = 'N';
                 return;
         }
         value.target.value = charTyped;
-        groupData[name] = changeTo;
-        addGroupUpdate(idx, name, changeTo);
+        groupData[colName] = changeTo;
+        addGroupUpdate(groupPk, colName, changeTo);
     }
 </script>   
 
@@ -39,12 +39,12 @@
 {#if editingMode}
     <input 
         style="flex: {width} 0 {width}rem;"
-        value={boolToChar(groupData[name]) ?? defaultTo}
+        value={boolToChar(groupData[colName]) ?? defaultTo}
         on:input={(val) => updateValue(val)}
     >
 {:else}
     <div style="flex: {width} 0 {width}rem;">
-        {boolToChar(groupData[name] ?? defaultTo)}
+        {boolToChar(groupData[colName] ?? defaultTo)}
     </div>
 {/if}
 

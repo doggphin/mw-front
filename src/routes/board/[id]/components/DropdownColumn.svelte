@@ -4,7 +4,7 @@
     import { widthConsts } from '../widthConsts.js';
     let addGroupUpdate = getContext('addGroupUpdate');
 
-    export let idx, options, name, groupData;
+    export let groupPk, options, colName, groupData;
     export let requireEditingMode = false;
     export let editingMode = false;
 
@@ -12,8 +12,8 @@
 
     function updateValue(val) {
         let newValue = val.target.value;
-        groupData[name] = newValue;
-        addGroupUpdate(idx, name, newValue)
+        groupData[colName] = newValue;
+        addGroupUpdate(groupPk, colName, newValue)
     }
 
     $: editingMode;
@@ -26,7 +26,7 @@
         on:change={(val) => updateValue(val)}
     >
         {#each options as option}
-            {#if groupData[name] == option}
+            {#if groupData[colName] == option}
                 <option value={option} selected>{option}</option>
             {:else}
                 <option value={option}>{option}</option>
@@ -35,7 +35,7 @@
     </select>
 {:else}
     <div class="hide-text" style="flex: {width} 0 {width}rem;">
-        {groupData[name]}
+        {groupData[colName]}
     </div>
 {/if}
 

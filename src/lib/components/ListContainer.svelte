@@ -21,7 +21,9 @@
         <li class="tabs-indent"/>
         {#each tabs as tab}
             <li class="tab" style="{tab == $CurrentMainTab ? "border-bottom-width: 0px;" : "background-color: var(--clr-primary-5-1);"}">
-                <button on:click={ setTab({tab}) }> {tab} </button>
+                <button on:click={ setTab({tab}) }>
+                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
             </li>
         {/each}
     </ol>
