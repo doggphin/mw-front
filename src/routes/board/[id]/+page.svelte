@@ -55,49 +55,38 @@
     const jobDict = {
         "slides" : {
             TAB_NAME : "Slides",
-            MAX_GROUP_NUMBER : 0
+            MAX_GROUP_NUMBER : 0,
+            GROUPS : () => slidesGroups
         },
         "prints" : {
             TAB_NAME : "Prints",
-            MAX_GROUP_NUMBER : 0
+            MAX_GROUP_NUMBER : 0,
+            GROUPS : () => printsGroups
         },
         "negatives" : {
             TAB_NAME : "Negatives",
-            MAX_GROUP_NUMBER : 0
+            MAX_GROUP_NUMBER : 0,
+            GROUPS : () => negativesGroups
         },
         "video" : {
             TAB_NAME : "Video",
-            MAX_GROUP_NUMBER : 0
+            MAX_GROUP_NUMBER : 0,
+            GROUPS : () => videoGroups
         },
         "data" : {
             TAB_NAME : "Data",
-            MAX_GROUP_NUMBER : 0
+            MAX_GROUP_NUMBER : 0,
+            GROUPS : () => dataGroups
         },
         "audio" : {
             TAB_NAME : "Audio",
-            MAX_GROUP_NUMBER : 0
-        }
-    }
-
-    function jobNameToGroups(jobName) {
-        switch (jobName) {
-            case "slides" :
-                return slidesGroups;
-            case "prints":
-                return printsGroups;
-            case "negatives":
-                return negativesGroups;
-            case "video":
-                return videoGroups;
-            case "data":
-                return dataGroups;
-            case "audio":
-                return audioGroups;
+            MAX_GROUP_NUMBER : 0,
+            GROUPS : () => audioGroups
         }
     }
 
     function getCurrentGroups() {
-        return jobNameToGroups($CurrentMainTab);
+        return jobDict[$CurrentMainTab].GROUPS();
     }
 
     function getGroupsSortedByGroupNumber(groups) {
@@ -623,9 +612,5 @@
         align-items: center;
         column-gap: 10px;
         padding: 7.5px 10px;
-    }
-    p {
-        padding: 10px;
-        text-align: center;
     }
 </style>
