@@ -59,6 +59,7 @@ export const widths = {
             "DVD #" : widthConsts.smallText,
             "VCR" : widthConsts.smallText,
             "Station #" : widthConsts.smallText,
+            "Length" : widthConsts.number,
             "Editing" : widthConsts.editing,
             "Comments" : widthConsts.comments,
             "" : widthConsts.compute
@@ -78,7 +79,20 @@ export const widths = {
             "#" : widthConsts.index,
             "Type" : widthConsts.dropdown,
             "Side" : widthConsts.smallText,
+            "Length" : widthConsts.number,
             "# Tracks" : widthConsts.smallText,
+            "Editing" : widthConsts.editing,
+            "Comments" : widthConsts.comments,
+            "" : widthConsts.compute
+        }
+    },
+    get film() {
+        return {
+            "#" : widthConsts.index,
+            "Type" : widthConsts.dropdown,
+            "Quality" : widthConsts.dropdown,
+            "Sound Sync" : widthConsts.dropdown,
+            "Length (ft)" : widthConsts.number,
             "Editing" : widthConsts.editing,
             "Comments" : widthConsts.comments,
             "" : widthConsts.compute

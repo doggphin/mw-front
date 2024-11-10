@@ -1,9 +1,13 @@
 <script>
     import { CurrentMainTab } from '$lib/scripts/mtd-store.js';
+    import AddIcon from "$lib/assets/add_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg";
 
     export let minWidthRem = 0;
     export let minWidthPx = 0;
     export let tabs = [];
+
+    // Should be a function that does something
+    export let addTab = null;
 
     function setTab(tabName) {
         CurrentMainTab.set(tabName["tab"]);
@@ -26,6 +30,13 @@
                 </button>
             </li>
         {/each}
+        {#if addTab != null}
+        <li class="tab" style="background-color: var(--clr-primary-5-1)">
+            <button on:click={ addTab() }>
+                <img style="height:100%; margin: -5px; background-color: none;" src={AddIcon} alt="Add Icon"/>
+            </button>
+        </li>
+        {/if}
     </ol>
 {/if}
 

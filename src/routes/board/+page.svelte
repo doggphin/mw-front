@@ -27,14 +27,16 @@
             <div>Status</div>
         </div>
         <ListContainerLineBreak />
-        {#each $ProjectBoardStore as projectListing, idx}
+        {#each $ProjectBoardStore as projectListing, i}
             <div class="listing">
                 <div class="listing-info">
-                    <a href="/board/{projectListing.id}">{projectListing.client_name_last}, {projectListing.client_name_first}</a>
+                    <a href="/board/{projectListing['id']}">{projectListing.client_name_last}, {projectListing.client_name_first}</a>
                 </div>
                 <ol class="media-container">
                     {#each projectListing.media_types as mediaType}
-                        <li class="media">{mediaType}</li>
+                        <li 
+                            class="media"
+                            style="border: 2px solid var(--clr-{mediaType.toLowerCase()}); background-color: var(--clr-{mediaType.toLowerCase()}-1);">{mediaType}</li>
                     {/each}
                 </ol>       
                 <div class="listing-info">
@@ -44,7 +46,7 @@
                 </div>
                 <div class="listing-info">{projectListing.comments}</div>
             </div>
-            {#if idx < $ProjectBoardStore.length - 1}
+            {#if i < $ProjectBoardStore.length - 1}
                 <ListContainerLineBreak dotted={true}/>
             {/if}
         {/each}
@@ -68,9 +70,8 @@
     .media {
         margin: 0px 5px 5px 0px;
         padding: 3px;
-        border: 2px solid var(--clr-primary-3);
-        border-radius: 20px;
-        background-color: var(--clr-primary-4);
+        border-radius: 10px;
+        
         height: 1rem;
     }
     .listing-info {

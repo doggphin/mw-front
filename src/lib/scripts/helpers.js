@@ -17,8 +17,18 @@ export function getRandom(a, b) {
 
 
 export function secondsToFormattedTime(seconds) {
-    let minutes = Math.floor(seconds / 60);
-    return `${minutes}m ${seconds % 60}s`
+    let hms = secondsToHoursMinutesSeconds(seconds);
+    hms.forEach((el) => {
+        el = el.toString().padStart(2, '0');
+    });
+    
+    if(hms[0] != 0) {
+        return `${hms[0]}h ${hms[1]}m ${hms[2]}s`;
+    } else if (hms[1] != 0) {
+        return `${hms[1]}m ${hms[2]}s`;
+    } else {
+        return `${hms[2]}s`;
+    }
 }
 
 
@@ -47,4 +57,74 @@ export function conformStringToNumber(value, max = 32767) {
 
 export function characterComesBefore(a, b) {
     return a.charCodeAt(0) < b.charCodeAt(0);
+}
+
+
+export function secondsToHoursMinutesSeconds(totalTime) {
+    let seconds = totalTime % 60;
+    let minutes = Math.floor((totalTime - seconds) / 60) % 60;
+    let hours   = Math.floor((totalTime - minutes * 60 - seconds) / 3600);
+
+    return [hours, minutes, seconds];
+}
+
+
+export function hoursMinutesSecondsToSeconds(hours, minutes, seconds) {
+    return hours * 3600 + minutes * 60 + seconds;   
+}
+
+
+export function formattedTimeToHoursMinutesSeconds(str) {
+    let currentBuf = "";
+
+    let hours = 0;
+    let minutes = 0;
+    let seconds = 0;
+
+    let state = 0;
+    for (const c of str) {
+        if(c == 'h') {
+            if(state <= 0) {
+                state = 1;
+                hours = currentBuf;
+                currentBuf = "";
+            } else {
+                alert(`Invalid input ${str}: Invalid hours (h) placement.`);
+                return null;
+            }
+
+        } else if (c == 'm' && state <= 1) {
+            if(state <= 1) {
+                state = 2;
+                minutes = currentBuf;
+                currentBuf = "";
+            } else {
+                alert(`Invalid input ${str}: Invalid minutes (m) placement.`);
+                return null;
+            }
+            
+        } else if (c == 's') {
+            if(state <= 2) {
+                seconds = currentBuf;
+                currentBuf = "";
+                break;
+            } else {
+                alert(`Invalid input ${str}: Invalid seconds (s) placement.`);
+                return null;
+            }
+            
+        } else {
+            currentBuf += c;
+        }
+    }
+
+    if (currentBuf != '') {
+        alert(`Invalid input ${str}: Invalid hours (h) placement.`);
+    }
+
+    if(!Number.isNaN(hours) && !Number.isNaN(minutes) && !Number.isNaN(seconds)) {
+        return [Number(hours), Number(minutes), Number(seconds)];
+    } else {
+        alert(`Non number included in the time value ${str}!`);
+    }
 }

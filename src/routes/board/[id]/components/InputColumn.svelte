@@ -9,6 +9,7 @@
     export let overlayCounts = false;
     export let warnOnDifferent = false;
     export let enforceNumbers = false;
+    export let showZeroes = false;
     export let widthName = 'number';
     let width = widthConsts[widthName];
 
@@ -72,7 +73,6 @@
             color = warnOnDifferent ?
                 getColor(groupData[finalName], groupData[intakeName])
                 : "var(--clr-primary-5)";
-
         } else {
             addGroupUpdate(groupPk, currentIdentifier, value.target.value.toString());
             color = "var(--clr-primary-5)";
@@ -97,10 +97,21 @@
         overlayCounts ?
             editingMode ?
                 ""
-                : groupData[intakeName] ?? ""
+                : groupData[intakeName] ? 
+                    showZeroes ?
+                        groupData[intakeName]
+                        : ""
+                    : ""
             : groupData[intakeName]
         }
-    value={groupData[currentIdentifier] ?? ""}
+    value={groupData[currentIdentifier] == null ? 
+        "" 
+        : groupData[currentIdentifier] == 0 ? 
+            showZeroes ?
+                0 :
+                ""
+            : groupData[currentIdentifier]
+    }
     on:input={(val) => {addUpdate(val)}}
 /> 
 

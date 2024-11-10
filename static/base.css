@@ -75,13 +75,20 @@ table {
 	--text-color-1: black;
 	font-family: "Rubik", sans-serif;
 
-	--clr-slides: #006400;
-	--clr-negatives: #bc8f8f;
-	--clr-photos: #ffd700;
-	--clr-film: #00ff00;
-	--clr-video: #00ffff;
-	--clr-data: #a020f0;
-	--clr-audio: #1e90ff;
+	--clr-slides: #649664;
+	--clr-slides-1: #a7caa7;
+	--clr-negs: #bc8f8f;
+	--clr-negs-1: #dda7a7;
+	--clr-prints: #ffed86;
+	--clr-prints-1: #fff8cf;
+	--clr-film: #9cff9c;
+	--clr-film-1: #d4ffd4;
+	--clr-video: #92ffff;
+	--clr-video-1: #cbffff;
+	--clr-data: #e0afff;
+	--clr-data-1: #eac7ff;
+	--clr-audio: #85c2ff;
+	--clr-audio-1: #c7e3ff;
 	--clr-other: #ff1493;
 
 	--border-radius-1: 15px;

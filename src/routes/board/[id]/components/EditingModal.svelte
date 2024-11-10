@@ -2,7 +2,7 @@
   import { getContext } from 'svelte';
   import { closeModal } from 'svelte-modals';
   import { editingTypesToLabel } from "$lib/scripts/editing.js";
-  import { conformStringToNumber } from "$lib/scripts/helpers.js";
+  import { conformStringToNumber, secondsToHoursMinutesSeconds, hoursMinutesSecondsToSeconds } from "$lib/scripts/helpers.js";
   import RestartIcon from "$lib/assets/replay_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg";
   import StartIcon from "$lib/assets/play_arrow_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg";
   import StopIcon from "$lib/assets/stop_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg";
@@ -57,14 +57,16 @@
 
 
   function updateMeasurementsFromTotalTime() {
-    seconds = totalTime % 60;
-    minutes = Math.floor((totalTime - seconds) / 60) % 60;
-    hours = Math.floor((totalTime - minutes * 60 - seconds) / 3600);
+    let hms = secondsToHoursMinutesSeconds(totalTime);
+
+    hours = hms[0];
+    minutes = hms[1];
+    seconds = hms[2];
   }
 
 
   function updateTotalTimeFromMeasurements() {
-    totalTime = hours * 3600 + minutes * 60 + seconds;
+    totalTime = hoursMinutesSecondsToSeconds(hours, minutes, seconds);
   }
 
 

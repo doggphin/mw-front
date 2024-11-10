@@ -10,6 +10,7 @@
     import { videoTypes } from "$lib/scripts/video.js";
     import { dataTypes } from "$lib/scripts/data.js";``
     import { audioTypes } from "$lib/scripts/audio.js";
+    import { filmTypes, filmQualities, filmSoundSyncStatuses } from "$lib/scripts/film.js";
 
     import JobDisplay from "./components/JobDisplay.svelte";
     import ListContainer from '$lib/components/ListContainer.svelte';
@@ -25,6 +26,8 @@
     import ComputeColumn from './components/ComputeColumn.svelte';
     import BlankColumn from './components/BlankColumn.svelte';
     import StaticTextColumn from './components/StaticTextColumn.svelte';
+    import TimeColumn from './components/TimeColumn.svelte';
+    import AddJobModal from './components/AddJobModal.svelte';
 
     export let data;    // Gets page number from page.js
 
@@ -51,42 +54,48 @@
     $: videoGroups = projectJobs?.["video"]?.["groups"];
     $: dataGroups = projectJobs?.["data"]?.["groups"];
     $: audioGroups = projectJobs?.["audio"]?.["groups"];
+    $: filmGroups = projectJobs?.["film"]?.["groups"];
 
     const jobDict = {
         "slides" : {
             TAB_NAME : "Slides",
             MAX_GROUP_NUMBER : 0,
-            GROUPS : () => slidesGroups
+            GET_GROUPS : () => slidesGroups
         },
         "prints" : {
             TAB_NAME : "Prints",
             MAX_GROUP_NUMBER : 0,
-            GROUPS : () => printsGroups
+            GET_GROUPS : () => printsGroups
         },
         "negatives" : {
             TAB_NAME : "Negatives",
             MAX_GROUP_NUMBER : 0,
-            GROUPS : () => negativesGroups
+            GET_GROUPS : () => negativesGroups
         },
         "video" : {
             TAB_NAME : "Video",
             MAX_GROUP_NUMBER : 0,
-            GROUPS : () => videoGroups
+            GET_GROUPS : () => videoGroups
         },
         "data" : {
             TAB_NAME : "Data",
             MAX_GROUP_NUMBER : 0,
-            GROUPS : () => dataGroups
+            GET_GROUPS : () => dataGroups
         },
         "audio" : {
             TAB_NAME : "Audio",
             MAX_GROUP_NUMBER : 0,
-            GROUPS : () => audioGroups
+            GET_GROUPS : () => audioGroups
+        },
+        "film" : {
+            TAB_NAME : "Film",
+            MAX_GROUP_NUMBER : 0,
+            GET_GROUPS : () => filmGroups
         }
     }
 
-    function getCurrentGroups() {
-        return jobDict[$CurrentMainTab].GROUPS();
+    function getCurrentGroups(changingVariable = 0) {
+        return jobDict[$CurrentMainTab].GET_GROUPS();
     }
 
     function getGroupsSortedByGroupNumber(groups) {
@@ -327,9 +336,11 @@
         let token = msg['token'];
         let jobName = msg['job_name'];
 
-        let group = jobNameToGroups(jobName)[groupPk];
+        let group = jobDict[jobName].GET_GROUPS()[groupPk];
 
         if (group) {
+            console.log("updating....");
+
             switch(colName) {
                 case 'editing_tags':
                     handleUpdateEditingTag(group, val, token, SESSION_TOKEN);
@@ -343,7 +354,11 @@
                     break;
             }
 
-            updateProject();  // Update DOM
+            console.log("updated");
+            
+            updateDomChangingVariable += 1;
+            project = project;  // Update DOM
+            group = group;
         } else {
             console.log("Error reading websocket message : Invalid job!");
         }
@@ -428,6 +443,8 @@
         editingMode = !editingMode;
     }
 
+
+    let updateDomChangingVariable = 0;
 </script>
 
 
@@ -439,14 +456,17 @@
     </button>
 {/if}
 
-<ListContainer minWidthRem={listContainerMinWidthRem} minWidthPx={listContainerMinWidthPx} tabs={tabsCache}>
+<ListContainer minWidthRem={listContainerMinWidthRem} minWidthPx={listContainerMinWidthPx} tabs={tabsCache} addTab={editingMode ? () => {console.log("test")} : null}>
     {#if project}
+        {@const sortedGroups = getGroupsSortedByGroupNumber(getCurrentGroups(updateDomChangingVariable))}
         <JobDisplay
             name={$CurrentMainTab}
             maxGroupNumber={jobDict[$CurrentMainTab].MAX_GROUP_NUMBER}
             editingMode={editingMode}
         >
-            {@const sortedGroups = getGroupsSortedByGroupNumber(getCurrentGroups())}
+        {#if sortedGroups.length == 0}
+            <TempMessage message = "No groups have been assigned to this job yet!"/>
+        {:else}
             {#each sortedGroups as [groupPk, groupData], i}
                 {@const groupNumber = groupData['group_number']}
                 
@@ -484,7 +504,7 @@
                             intakeName="intake_scanner_count"
                             finalName="final_scanner_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode={editingMode}/>
                         <InputColumn bind:groupData groupPk={groupPk}
-                            intakeName="intake_scanner_count"
+                            intakeName="intake_hs_count"
                             finalName="final_hs_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode={editingMode}/>
 
 
@@ -534,6 +554,8 @@
                             widthName = "smallText"/>
                         <InputColumn bind:groupData groupPk={groupPk}
                             finalName = "station_number" widthName = "smallText" enforceNumbers = {true}/>
+                        <TimeColumn bind:groupData = {groupData} groupPk = {groupPk}
+                            colName = "length"/>
 
                     {:else if $CurrentMainTab == "data"}
                         <DropdownColumn bind:groupData groupPk={groupPk}
@@ -554,6 +576,8 @@
                         <StaticTextColumn bind:groupData
                             colName = "side"
                             widthName = "smallText"/>
+                        <TimeColumn bind:groupData = {groupData} groupPk = {groupPk}
+                            colName = "length"/>
                         <InputColumn bind:groupData groupPk={groupPk}
                             finalName = "tracks"
                             widthName = "smallText" enforceNumbers = {true}/>
@@ -571,8 +595,24 @@
                             <BlankColumn widthName = "compute"/>
                         {/if}
 
+                    {:else if $CurrentMainTab == "film"}
+                        <DropdownColumn bind:groupData groupPk={groupPk}
+                            options={filmTypes}
+                            colName="film_type" editingMode = {editingMode}
+                            requireEditingMode={true}/>
+                        <DropdownColumn bind:groupData groupPk={groupPk}
+                            options={filmQualities}
+                            colName="film_quality" editingMode = {editingMode}
+                            requireEditingMode={true}/>
+                        <DropdownColumn bind:groupData groupPk={groupPk}
+                            options={filmSoundSyncStatuses}
+                            colName="sound_sync_status"/>
+                        <InputColumn bind:groupData groupPk={groupPk}
+                            intakeName="est_length"
+                            finalName="act_length" overlayCounts = {true} warnOnDifferent = {false} enforceNumbers = {true} editingMode = {editingMode}/>
+
                     {:else}
-                        <TempMessage message = {`No groups have been assigned to this project's ${$CurrentMainTab} job yet!`}/>
+                        <TempMessage message = {`${$CurrentMainTab} is not yet implemented!`}/>
                     {/if}
                 
                 <!-- Audio tab doesn't always include these -->
@@ -595,8 +635,8 @@
                     dotted={true}
                     drawInsert={editingMode}/>
             {/if}
-            
         {/each}
+    {/if}
     </JobDisplay>
 
     {:else}
