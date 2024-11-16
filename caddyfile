@@ -1,0 +1,12 @@
+{
+	admin off
+
+	log {
+		output file /var/log/caddy/access.log
+		format json
+	}
+}
+
+https://memoryware.app {
+	reverse_proxy http://localhost:5173
+}

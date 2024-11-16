@@ -8,18 +8,23 @@
     let width = widthConsts.index;
 
     function tryUpdateIndex(value) {
+        console.log("calling it");
         let targetStr = value.target.value.toString();
         targetStr.replace(/[^0-9]/g, '');
         while(targetStr.length > 0 && targetStr.charAt(0) === '0') {
             targetStr = targetStr.substring(1);
         }
         let result = targetStr == '' ? 1 : Math.min(32767, parseInt(targetStr));
-        let resultStr = result ? result : '';
+        console.log(result);
+        if(result == '' || Number.isNaN(result)) {
+            value.target.value = groupData["group_number"];
+            return;
+        }
 
         // Check if this value is valid 
-        addChangeGroupNumberUpdate(groupPk, resultStr);
-        value.target.value = resultStr;
-        groupData["group_number"] = resultStr;
+        addChangeGroupNumberUpdate(groupPk, result);
+        value.target.value = result;
+        groupData["group_number"] = result;
         groupData = groupData;
     }
 </script>

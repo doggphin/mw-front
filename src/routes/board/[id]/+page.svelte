@@ -37,6 +37,7 @@
     let editingMode = false;
     let project = null;
     let tabsCache = [];
+    CurrentMainTab.set("");
     // An identifier token is attached to modification requests to (until profiles are set up) determine what session sent it
     // If a frontend session receives an update, if it came from themselves, it is ignored, or in some situations, used to update temporary values.
     const SESSION_TOKEN = getRandom(-2147483648, 2147483647);
@@ -155,7 +156,7 @@
 
 
             if(tabsCache.length > 0 && resetTab) {
-                CurrentMainTab.set(tabsCache[0].toLowerCase());
+                $CurrentMainTab = tabsCache[0].toLowerCase();
             }
         } else {
             PageNameStore.set("Error retrieving project");
@@ -517,6 +518,7 @@
     let listContainerMinWidthPx = 0;
     $: $CurrentMainTab, setWidths()
     function setWidths() {
+        console.log(`Setting width for tab ${CurrentMainTab}`);
         if($CurrentMainTab && $CurrentMainTab != "") {
             [listContainerMinWidthRem, listContainerMinWidthPx] = widths.getWidth($CurrentMainTab.toLowerCase());
         }
@@ -596,7 +598,7 @@
     addTab={editingMode ? openEditJobsModal : null}
 >
     {#if project}
-        {#if !$CurrentMainTab}
+        {#if $CurrentMainTab == ""}
             No jobs are assigned to this project.
         {:else}
             {@const sortedGroups = getGroupsSortedByGroupNumber(getCurrentGroups(updateDomChangingVariable))}
@@ -632,7 +634,14 @@
                             <!-- Audio is handled differently; these are added manually there -->
                             {#if !isAudio}
                                 <TrashColumn groupPk={groupPk} editingMode={editingMode}/>
-                                <IndexColumn bind:groupData groupPk={groupPk} editingMode = {editingMode}/>
+                                <!--<IndexColumn bind:groupData groupPk={groupPk} editingMode = {editingMode}/>-->
+                                {#if editingMode}
+                                    <InputColumn bind:groupData groupPk={groupPk}
+                                        enforceNumbers = {true} editingMode={editingMode}
+                                        finalName="group_number" widthName = "index"/>
+                                {:else}
+                                    <StaticTextColumn bind:groupData widthName = "index" colName = "group_number"/>
+                                {/if}
                             {/if}
                                 
                             {#if $CurrentMainTab == "slides" && slidesGroups}
@@ -706,7 +715,13 @@
                             {:else if $CurrentMainTab == "audio"}
                                 {#if isFirstSideInGroup}
                                     <TrashColumn groupPk={groupPk} editingMode = {editingMode}/>
-                                    <IndexColumn bind:groupData groupPk={groupPk} editingMode = {editingMode}/>
+                                    {#if editingMode}
+                                        <InputColumn bind:groupData groupPk={groupPk}
+                                            enforceNumbers = {true} editingMode={editingMode}
+                                            finalName="group_number" widthName = "index"/>
+                                    {:else}
+                                        <StaticTextColumn bind:groupData widthName = "index" colName = "group_number"/>
+                                    {/if}
                                     <DropdownColumn bind:groupData groupPk={groupPk}
                                         colName = "audio_type" options = {audioTypes} requireEditingMode = {true} editingMode = {editingMode}/>
                                 {:else}
@@ -787,7 +802,7 @@
             {#if error == 1}
                 No project with ID ${data.id} exists.
             {:else}
-                Loading...
+                Loading project...
             {/if}
         </TempMessage>
     {/if}

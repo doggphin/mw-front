@@ -99,10 +99,10 @@
             editingMode ?
                 ""
                 : groupData[intakeName] ? 
-                    showZeroes ?
+                    groupData[intakeName]
+                    : showZeroes ?
                         groupData[intakeName]
                         : ""
-                    : ""
             : groupData[intakeName]
         }
     value={groupData[currentIdentifier] == null ? 
