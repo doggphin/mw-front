@@ -1,9 +1,5 @@
-<script>
-    export let message = "";
-</script>
-
 <div class="loading-space">
-    {message}
+    <slot/>
 </div>
 
 
@@ -11,6 +7,6 @@
     .loading-space {
         width: 100%;
         text-align: center;
-        padding: 20px 0px;
+        padding: 20px 0;
     }
 </style>

@@ -94,6 +94,7 @@
     placeholder={
         // If in normal mode, set placeholder to intake value.
         // If in editing mode, set placeholder to nothing, since it shouldn't represent anything.
+        // This is a crime against humanity :) consider making this a function
         overlayCounts ?
             editingMode ?
                 ""

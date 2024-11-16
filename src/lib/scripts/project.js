@@ -5,6 +5,7 @@ export function updateProject() {
     UpdateProject();
 }
 
+
 export function addEditingTag(group, id, time, editing_type, tempId, receivedSessionToken, sessionToken) {
     // If receiving an update for an add that this client sent, update the temp tag to the actual tag
     console.log(`my token is ${sessionToken}. received session token is ${receivedSessionToken}.`)
@@ -23,19 +24,25 @@ export function addEditingTag(group, id, time, editing_type, tempId, receivedSes
         });
     }
 }
+
+
 export function addTempEditingTag(group, randomId) {
     addEditingTag(group, randomId, 0, 'NA', 0, 0, -1);
 }
 
+
 export function removeEditingTag(group, id) {
+    console.log(`So is this! id is ${id}`);
     // TODO: Why am I going backwards through this again?
     for (let i = group['editing_tags'].length - 1; i >= 0; --i) {
-        if (group['editing_tags'][i].id == id) {
+        console.log(group['editing_tags'][i]);
+        if (group['editing_tags'][i]['id'] == id) {
             group['editing_tags'].splice(i,1);
         }
     }
-    updateProject();
+    //updateProject();
 }
+
 
 // If editing_time or editing_type is null, they are not modified.
 export function modifyEditingTag(group, id, editing_time, editing_type) {

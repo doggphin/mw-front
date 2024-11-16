@@ -5,10 +5,11 @@
     let addGroupUpdate = getContext('addGroupUpdate');
 
     export let groupPk, options, colName, groupData;
+    export let widthName = "dropdown";
     export let requireEditingMode = false;
     export let editingMode = false;
 
-    let width = widthConsts.dropdown;
+    let width = widthConsts[widthName];
 
     function updateValue(val) {
         let newValue = val.target.value;
@@ -44,7 +45,6 @@
     select {
         min-width: 0;
         padding: 2.5px;
-        margin: 0 -2.5px; /* To fix added padding */
         border-radius: 5px;
         min-height: 25px;
         border-style: none;
@@ -55,6 +55,6 @@
     .hide-text {
         min-width: 0;
         overflow: hidden;
-        text-overflow: ellipsis; 
+        text-overflow: ellipsis;
     }
 </style>

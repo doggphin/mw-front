@@ -1,4 +1,5 @@
 <script>
+    import { openModal } from 'svelte-modals';
     import { PageNameStore, CurrentMainTab, ProjectWebsocket, UpdateProject } from '$lib/scripts/mtd-store.js';
     import { getRandom, characterComesBefore } from '$lib/scripts/helpers.js';
     import { handleUpdateEditingTag, addTempEditingTag, removeEditingTag } from "$lib/scripts/project.js";
@@ -27,7 +28,8 @@
     import BlankColumn from './components/BlankColumn.svelte';
     import StaticTextColumn from './components/StaticTextColumn.svelte';
     import TimeColumn from './components/TimeColumn.svelte';
-    import AddJobModal from './components/AddJobModal.svelte';
+    import EditJobsModal from './components/EditJobsModal.svelte';
+    import { LoadingManager } from 'three';
 
     export let data;    // Gets page number from page.js
 
@@ -94,14 +96,37 @@
         }
     }
 
+    function getJobsByPresence(getExists = false) {
+        let ret =  []
+
+        Object.keys(jobDict).forEach(key => {
+            if(project['jobs'].hasOwnProperty(key) == getExists) {
+                ret.push(key);
+            }
+        });
+
+        return ret;
+    }
+
     function getCurrentGroups(changingVariable = 0) {
         return jobDict[$CurrentMainTab].GET_GROUPS();
+    }
+
+    function getGroupsByJobName(name) {
+        return jobDict[name].GET_GROUPS()
     }
 
     function getGroupsSortedByGroupNumber(groups) {
         return groups ?
             Object.entries(groups)?.sort((a, b) => a[1]['group_number'] - b[1]['group_number']) :
             {}
+    }
+
+    function recalculateTabsCache() {
+        tabsCache = Object.keys(project["jobs"]);
+        if(!tabsCache.includes($CurrentMainTab)) {
+            $CurrentMainTab = tabsCache.length > 0 ? tabsCache[0] : "";
+        }
     }
 
     // Requests this project's jobs from the database
@@ -118,11 +143,11 @@
 
             PageNameStore.set(project["formatted_project_name"]);
 
-            for(const [jobName, jobData] of Object.entries(project['jobs'])) {
-                if(resetTab) {
-                    tabsCache.push(jobName);
-                }
+            if(resetTab) {
+                recalculateTabsCache();
+            }
 
+            for(const [jobName, jobData] of Object.entries(project['jobs'])) {
                 jobDict[jobName].MAX_GROUP_NUMBER = Object.values(jobData['groups']).reduce((maxGroupNumber, groupToCheck) => {
                     return Math.max(maxGroupNumber, groupToCheck['group_number']);
                 }, 0);
@@ -194,7 +219,7 @@
     */
     function addChangeGroupNumberUpdate(groupId, toGroupNumber) {
         addGroupUpdate(groupId, "group_number", toGroupNumber);
-        return true;
+        project = project;
     }
     setContext("addChangeGroupNumberUpdate", addChangeGroupNumberUpdate);
 
@@ -208,8 +233,8 @@
             "type" : "insert_group",
             "data" : {
                 "token" : SESSION_TOKEN,
-                "job" : $CurrentMainTab,
-                "group_number" : atGroupNumber
+                "job_name" : $CurrentMainTab,
+                "at_group_number" : atGroupNumber
             }
         });
     }
@@ -225,11 +250,14 @@
             "type" : "delete_group",
             "data" : {
                 "token" : SESSION_TOKEN,
-                "job" : $CurrentMainTab,
-                "id" : idToDelete
+                "job_name" : $CurrentMainTab,
+                "group_pk" : idToDelete
             }
         });
+
         delete getCurrentGroups()[idToDelete];
+
+        project = project;
     }
     setContext("sendDeleteGroupByIdRequest", sendDeleteGroupByIdRequest);
 
@@ -312,18 +340,21 @@
         Adds a request to update an editing tag in the currently opened job for group
         "id", with tag ID "tagID", to the update request cache.
     */
-    function addEditingTagDeleteRequest(groupId, editingTagId) {
-        let group = getCurrentGroups()[groupId];
+    function addEditingTagDeleteRequest(groupPk, editingTagId) {
+
+        let group = getCurrentGroups()[groupPk];
         
         removeEditingTag(group, editingTagId);
 
         addGroupUpdate(
-            id, 
+            groupPk, 
             "editing_tags", {
                 "update_type" : "delete",
                 "id" : editingTagId
             }
         );
+
+        project = project;
     }
     setContext("addEditingTagDeleteRequest", addEditingTagDeleteRequest);
 
@@ -336,7 +367,7 @@
         let token = msg['token'];
         let jobName = msg['job_name'];
 
-        let group = jobDict[jobName].GET_GROUPS()[groupPk];
+        let group = getGroupsByJobName(jobName)[groupPk];
 
         if (group) {
             console.log("updating....");
@@ -367,18 +398,61 @@
 
     function handleReceiveGroupDelete(receivedJson) {
         let token = receivedJson['token'];
-        let id = receivedJson['id'];
+        let group_pk = receivedJson['group_pk'];
         let job = receivedJson['job'];
+
+        console.log(job);
 
         if(SESSION_TOKEN == token) {
             console.log("Ignoring a delete request sent from this client.");
             return;
         }
 
-        delete jobNameToGroups(job)[groupPk];
+        delete getGroupsByJobName(job)[group_pk];
 
-        updateProject();
+        project = project;
     }
+
+    
+    function handleReceiveJobAdd(receivedJson) {
+        let token = receivedJson['token'];
+        let jobName = receivedJson['job_name'];
+        let formattedName = receivedJson['new_formatted_project_name'];
+        
+        PageNameStore.set(formattedName);
+
+        if(token == SESSION_TOKEN) {
+            console.log("Ignoring own job add packet.");
+            return;
+        }
+
+        // # TODO: move to own function
+        project["jobs"][jobName] = {
+            "comments" : "",
+            "groups" : { }
+        }
+        recalculateTabsCache();
+        project = project;
+    }
+
+
+    function handleReceiveJobDelete(receivedJson) {
+        let token = receivedJson['token'];
+        let jobName = receivedJson['job_name'];
+        let formattedName = receivedJson['new_formatted_project_name'];
+        
+        PageNameStore.set(formattedName);
+
+        if(token == SESSION_TOKEN) {
+            console.log("Ignoring own job add packet.");
+            return;
+        }
+
+        delete project["jobs"][jobName];
+        recalculateTabsCache();
+        project = project;
+    }
+
 
     ProjectWebsocket.set(new WebSocket(`${PUBLIC_IP_WS_BACKEND}/ws/project/${data.id}/`));
     function createWebsocketConnection() {
@@ -398,6 +472,7 @@
         try {
             const event_json = JSON.parse(event.data);
             const msg = event_json['message'];
+            const packet_type = event_json['type'];
 
             switch(event_json['type']) {
 
@@ -411,9 +486,19 @@
                     break;
 
                 case "projects.force_update": //TODO : don't do this. introduces a shitton of lag
-                    console.log("received a force update!");
                     getProjectData(false);
                     break;
+
+                case "projects.add_job":
+                    handleReceiveJobAdd(msg);
+                    break;
+
+                case "projects.delete_job":
+                    handleReceiveJobDelete(msg);
+                    break;
+
+                default:
+                    console.log(`Unrecognized packet type received: ${packet_type}`)
             }          
         } catch(e) {
             console.log(`Error reading websocket message : ${e}`);
@@ -443,8 +528,56 @@
         editingMode = !editingMode;
     }
 
-
+    // Wack-ass way of updating the DOM whenever this changes
     let updateDomChangingVariable = 0;
+
+    function requestAddJob(jobToAdd) {
+        console.log(`Requesting to add ${jobToAdd}!`);
+
+        sendRequest({
+            "type" : "add_job",
+            "data" : {
+                "token" : SESSION_TOKEN,
+                "job_name" : jobToAdd
+            }
+        })
+
+        project["jobs"][jobToAdd] = {
+            "comments" : "",
+            "groups" : { }
+        }
+
+        recalculateTabsCache();
+        project = project;
+    }
+
+
+    function requestDeleteJob(jobToRemove) {
+        console.log(`Requesting to delete ${jobToRemove}!`);
+
+        sendRequest({
+            "type" : "delete_job",
+            "data" : {
+                "token" : SESSION_TOKEN,
+                "job_name" : jobToRemove
+            }
+        })
+
+        delete project["jobs"][jobToRemove];
+        
+        recalculateTabsCache();
+        project = project;
+    }
+
+
+    function openEditJobsModal() {
+        openModal(EditJobsModal, {
+            jobsToAdd : getJobsByPresence(false),
+            jobsToRemove : getJobsByPresence(true),
+            requestAddJob : requestAddJob,
+            requestDeleteJob : requestDeleteJob
+        });
+    }
 </script>
 
 
@@ -456,191 +589,207 @@
     </button>
 {/if}
 
-<ListContainer minWidthRem={listContainerMinWidthRem} minWidthPx={listContainerMinWidthPx} tabs={tabsCache} addTab={editingMode ? () => {console.log("test")} : null}>
+<ListContainer 
+    minWidthRem={listContainerMinWidthRem}
+    minWidthPx={listContainerMinWidthPx}
+    tabs={tabsCache} 
+    addTab={editingMode ? openEditJobsModal : null}
+>
     {#if project}
-        {@const sortedGroups = getGroupsSortedByGroupNumber(getCurrentGroups(updateDomChangingVariable))}
-        <JobDisplay
-            name={$CurrentMainTab}
-            maxGroupNumber={jobDict[$CurrentMainTab].MAX_GROUP_NUMBER}
-            editingMode={editingMode}
-        >
-        {#if sortedGroups.length == 0}
-            <TempMessage message = "No groups have been assigned to this job yet!"/>
+        {#if !$CurrentMainTab}
+            No jobs are assigned to this project.
         {:else}
-            {#each sortedGroups as [groupPk, groupData], i}
-                {@const groupNumber = groupData['group_number']}
-                
-                <!-- These only matter if the current job is audio; hacky solution, this is done to increase variable scope -->
-                {@const isAudio = $CurrentMainTab == "audio"}
-                {@const mySide = isAudio ? groupData['side'] : null}
-                {@const otherSides = isAudio ? Object.entries(audioGroups).reduce(
-                    (acc, [otherGroupPk, otherGroupData]) => {
-                        if(otherGroupPk != groupPk && otherGroupData['group_number'] == groupNumber) {
-                            acc.push(otherGroupData['side']);
-                        }
-                        return acc;
-                    }, []) : null}
-                {@const isFirstSideInGroup = isAudio ? !otherSides.some(otherSide => 
-                    characterComesBefore(otherSide, mySide)
-                ) : null}
-                {@const isLastSideInGroup = isAudio ? !otherSides.some(otherSide => 
-                    characterComesBefore(mySide, otherSide)
-                ) : null}
-
-                <ol>
-                    <!-- Audio is handled differently; these are added manually there -->
-                    {#if !isAudio}
-                        <TrashColumn groupPk={groupPk} editingMode={editingMode}/>
-                        <IndexColumn bind:groupData groupPk={groupPk} editingMode = {editingMode}/>
-                    {/if}
-                        
-                    {#if $CurrentMainTab == "slides" && slidesGroups}
-                        <DropdownColumn bind:groupData groupPk={groupPk}
-                            colName="dpi"
-                            options={[1250, 2500, 5000]} editingMode={editingMode} requireEditingMode={true}/>
-                        <YNColumn bind:groupData groupPk={groupPk}
-                            colName="correct" defaultTo={"N"} editingMode = {editingMode}/>
-                        <InputColumn bind:groupData groupPk={groupPk}
-                            intakeName="intake_scanner_count"
-                            finalName="final_scanner_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode={editingMode}/>
-                        <InputColumn bind:groupData groupPk={groupPk}
-                            intakeName="intake_hs_count"
-                            finalName="final_hs_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode={editingMode}/>
-
-
-                    {:else if $CurrentMainTab == "prints"}
+            {@const sortedGroups = getGroupsSortedByGroupNumber(getCurrentGroups(updateDomChangingVariable))}
+            <JobDisplay
+                name={$CurrentMainTab}
+                maxGroupNumber={jobDict[$CurrentMainTab].MAX_GROUP_NUMBER}
+                editingMode={editingMode}
+            >
+                {#if sortedGroups.length == 0}
+                    <TempMessage message = "No groups have been assigned to this job yet!"/>
+                {:else}
+                    {#each sortedGroups as [groupPk, groupData], i}
                         {@const groupNumber = groupData['group_number']}
-                        <DropdownColumn bind:groupData groupPk={groupPk}
-                            options={[300, 600, 1200]}
-                            colName="dpi" editingMode = {editingMode} requireEditingMode={true}/>
-                        <YNColumn bind:groupData groupPk={groupPk} defaultTo={"N"}
-                            colName="correct" editingMode = {editingMode}/>
-                        <InputColumn bind:groupData groupPk={groupPk}
-                            intakeName="intake_lp_count"
-                            finalName="final_lp_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode = {editingMode}/>
-                        <InputColumn bind:groupData groupPk={groupPk}
-                            intakeName="intake_hs_count"
-                            finalName="final_hs_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode = {editingMode}/>
-                        <InputColumn bind:groupData groupPk={groupPk}
-                            intakeName="intake_oshs_count"
-                            finalName="final_oshs_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode = {editingMode}/>
-
-
-                    {:else if $CurrentMainTab == "negatives"}
-                        <DropdownColumn bind:groupData groupPk={groupPk}
-                            options={[1250, 1500, 2500, 3000, 4000, 5000]}
-                            colName="dpi" editingMode = {editingMode}
-                            requireEditingMode={true}/>
-                        <YNColumn bind:groupData groupPk={groupPk} defaultTo={"N"}
-                            colName="correct" editingMode = {editingMode}/>
-                        <InputColumn bind:groupData groupPk={groupPk}
-                            intakeName = "intake_strip_count"
-                            finalName = "final_strip_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode = {editingMode}/>
-                        <InputColumn bind:groupData groupPk={groupPk}
-                            intakeName = "intake_images_count"
-                            finalName = "final_images_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode = {editingMode}/>
-                        <InputColumn bind:groupData groupPk={groupPk}
-                            intakeName = "intake_hs_count"
-                            finalName = "final_hs_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode = {editingMode}/>
-
-                    {:else if $CurrentMainTab == "video"}
-                        <DropdownColumn bind:groupData groupPk={groupPk}
-                            colName="video_type" options={videoTypes} editingMode={editingMode} requireEditingMode={true}/>
-                        <InputColumn bind:groupData groupPk={groupPk}
-                            intakeName = "est_dvd_number"
-                            finalName = "act_dvd_number" overlayCounts = {true} enforceNumbers = {true} editingMode = {editingMode} widthName = "smallText"/>
-                        <InputColumn bind:groupData groupPk={groupPk}
-                            finalName = "vcr"
-                            widthName = "smallText"/>
-                        <InputColumn bind:groupData groupPk={groupPk}
-                            finalName = "station_number" widthName = "smallText" enforceNumbers = {true}/>
-                        <TimeColumn bind:groupData = {groupData} groupPk = {groupPk}
-                            colName = "length"/>
-
-                    {:else if $CurrentMainTab == "data"}
-                        <DropdownColumn bind:groupData groupPk={groupPk}
-                            colName="data_type" options={dataTypes} editingMode={editingMode} requireEditingMode={true}/>
-
-
-                    {:else if $CurrentMainTab == "audio"}
-                        {#if isFirstSideInGroup}
-                            <TrashColumn groupPk={groupPk} editingMode = {editingMode}/>
-                            <IndexColumn bind:groupData groupPk={groupPk} editingMode = {editingMode}/>
-                            <DropdownColumn bind:groupData groupPk={groupPk}
-                                colName = "audio_type" options = {audioTypes} requireEditingMode = {true} editingMode = {editingMode}/>
-                        {:else}
-                            <BlankColumn widthName = "index"/>
-                            <BlankColumn widthName = "dropdown"/>
-                        {/if}
                         
-                        <StaticTextColumn bind:groupData
-                            colName = "side"
-                            widthName = "smallText"/>
-                        <TimeColumn bind:groupData = {groupData} groupPk = {groupPk}
-                            colName = "length"/>
-                        <InputColumn bind:groupData groupPk={groupPk}
-                            finalName = "tracks"
-                            widthName = "smallText" enforceNumbers = {true}/>
-                        <EditingColumn bind:groupData
-                            groupPk={groupPk}/>
-                        <TextColumn bind:groupData groupPk={groupPk}
-                            colName = "comments" widthName = "comments"/>
+                        <!-- These only matter if the current job is audio; hacky solution, this is done to increase variable scope -->
+                        {@const isAudio = $CurrentMainTab == "audio"}
+                        {@const mySide = isAudio ? groupData['side'] : null}
+                        {@const otherSides = isAudio ? Object.entries(audioGroups).reduce(
+                            (acc, [otherGroupPk, otherGroupData]) => {
+                                if(otherGroupPk != groupPk && otherGroupData['group_number'] == groupNumber) {
+                                    acc.push(otherGroupData['side']);
+                                }
+                                return acc;
+                            }, []) : null}
+                        {@const isFirstSideInGroup = isAudio ? !otherSides.some(otherSide => 
+                            characterComesBefore(otherSide, mySide)
+                        ) : null}
+                        {@const isLastSideInGroup = isAudio ? !otherSides.some(otherSide => 
+                            characterComesBefore(mySide, otherSide)
+                        ) : null}
+
+                        <ol>
+                            <!-- Audio is handled differently; these are added manually there -->
+                            {#if !isAudio}
+                                <TrashColumn groupPk={groupPk} editingMode={editingMode}/>
+                                <IndexColumn bind:groupData groupPk={groupPk} editingMode = {editingMode}/>
+                            {/if}
+                                
+                            {#if $CurrentMainTab == "slides" && slidesGroups}
+                                <DropdownColumn bind:groupData groupPk={groupPk}
+                                    colName="dpi"
+                                    options={[1250, 2500, 5000]} editingMode={editingMode} requireEditingMode={true}/>
+                                <YNColumn bind:groupData groupPk={groupPk}
+                                    colName="correct" defaultTo={"N"} editingMode = {editingMode}/>
+                                <InputColumn bind:groupData groupPk={groupPk}
+                                    intakeName="intake_scanner_count"
+                                    finalName="final_scanner_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode={editingMode}/>
+                                <InputColumn bind:groupData groupPk={groupPk}
+                                    intakeName="intake_hs_count"
+                                    finalName="final_hs_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode={editingMode}/>
+
+
+                            {:else if $CurrentMainTab == "prints"}
+                                {@const groupNumber = groupData['group_number']}
+                                <DropdownColumn bind:groupData groupPk={groupPk}
+                                    options={[300, 600, 1200]}
+                                    colName="dpi" editingMode = {editingMode} requireEditingMode={true}/>
+                                <YNColumn bind:groupData groupPk={groupPk} defaultTo={"N"}
+                                    colName="correct" editingMode = {editingMode}/>
+                                <InputColumn bind:groupData groupPk={groupPk}
+                                    intakeName="intake_lp_count"
+                                    finalName="final_lp_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode = {editingMode}/>
+                                <InputColumn bind:groupData groupPk={groupPk}
+                                    intakeName="intake_hs_count"
+                                    finalName="final_hs_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode = {editingMode}/>
+                                <InputColumn bind:groupData groupPk={groupPk}
+                                    intakeName="intake_oshs_count"
+                                    finalName="final_oshs_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode = {editingMode}/>
+
+
+                            {:else if $CurrentMainTab == "negatives"}
+                                <DropdownColumn bind:groupData groupPk={groupPk}
+                                    options={[1250, 1500, 2500, 3000, 4000, 5000]}
+                                    colName="dpi" editingMode = {editingMode}
+                                    requireEditingMode={true}/>
+                                <YNColumn bind:groupData groupPk={groupPk} defaultTo={"N"}
+                                    colName="correct" editingMode = {editingMode}/>
+                                <InputColumn bind:groupData groupPk={groupPk}
+                                    intakeName = "intake_strip_count"
+                                    finalName = "final_strip_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode = {editingMode}/>
+                                <InputColumn bind:groupData groupPk={groupPk}
+                                    intakeName = "intake_images_count"
+                                    finalName = "final_images_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode = {editingMode}/>
+                                <InputColumn bind:groupData groupPk={groupPk}
+                                    intakeName = "intake_hs_count"
+                                    finalName = "final_hs_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode = {editingMode}/>
+
+                            {:else if $CurrentMainTab == "video"}
+                                <DropdownColumn bind:groupData groupPk={groupPk}
+                                    colName="video_type" options={videoTypes} editingMode={editingMode} requireEditingMode={true}/>
+                                <InputColumn bind:groupData groupPk={groupPk}
+                                    intakeName = "est_dvd_number"
+                                    finalName = "act_dvd_number" overlayCounts = {true} enforceNumbers = {true} editingMode = {editingMode} widthName = "smallText"/>
+                                <InputColumn bind:groupData groupPk={groupPk}
+                                    finalName = "vcr"
+                                    widthName = "smallText"/>
+                                <InputColumn bind:groupData groupPk={groupPk}
+                                    finalName = "station_number" widthName = "smallText" enforceNumbers = {true}/>
+                                <TimeColumn bind:groupData = {groupData} groupPk = {groupPk}
+                                    colName = "length"/>
+
+                            {:else if $CurrentMainTab == "data"}
+                                <DropdownColumn bind:groupData groupPk={groupPk}
+                                    colName="data_type" options={dataTypes} editingMode={editingMode} requireEditingMode={true}/>
+
+
+                            {:else if $CurrentMainTab == "audio"}
+                                {#if isFirstSideInGroup}
+                                    <TrashColumn groupPk={groupPk} editingMode = {editingMode}/>
+                                    <IndexColumn bind:groupData groupPk={groupPk} editingMode = {editingMode}/>
+                                    <DropdownColumn bind:groupData groupPk={groupPk}
+                                        colName = "audio_type" options = {audioTypes} requireEditingMode = {true} editingMode = {editingMode}/>
+                                {:else}
+                                    <TrashColumn groupPk={groupPk} editingMode = {editingMode}/>
+                                    <BlankColumn widthName = "index"/>
+                                    <BlankColumn widthName = "dropdown"/>
+                                {/if}
+                                
+                                <DropdownColumn bind:groupData groupPk={groupPk}
+                                options={['A', 'B', 'C', 'D']}
+                                    colName = "side"
+                                    widthName = "smallText"/>
+                                <TimeColumn bind:groupData = {groupData} groupPk = {groupPk}
+                                    colName = "length"/>
+                                <InputColumn bind:groupData groupPk={groupPk}
+                                    finalName = "tracks"
+                                    widthName = "smallText" enforceNumbers = {true}/>
+                                <EditingColumn bind:groupData
+                                    groupPk={groupPk}/>
+                                <TextColumn bind:groupData groupPk={groupPk}
+                                    colName = "comments" widthName = "comments"/>
+                                
+                                {#if isFirstSideInGroup}
+                                    <ComputeColumn
+                                        projectId = {data['group_number']}
+                                        groupPk = {groupPk}
+                                        mediaType = "slides"/>
+                                {:else}
+                                    <BlankColumn widthName = "compute"/>
+                                {/if}
+
+                            {:else if $CurrentMainTab == "film"}
+                                <DropdownColumn bind:groupData groupPk={groupPk}
+                                    options={filmTypes}
+                                    colName="film_type" editingMode = {editingMode}
+                                    requireEditingMode={true}/>
+                                <DropdownColumn bind:groupData groupPk={groupPk}
+                                    options={filmQualities}
+                                    colName="film_quality" editingMode = {editingMode}
+                                    requireEditingMode={true}/>
+                                <DropdownColumn bind:groupData groupPk={groupPk}
+                                    options={filmSoundSyncStatuses}
+                                    colName="sound_sync_status"/>
+                                <InputColumn bind:groupData groupPk={groupPk}
+                                    intakeName="est_length"
+                                    finalName="act_length" overlayCounts = {true} warnOnDifferent = {false} enforceNumbers = {true} editingMode = {editingMode}/>
+
+                            {:else}
+                                <TempMessage message = {`${$CurrentMainTab} is not yet implemented!`}/>
+                            {/if}
                         
-                        {#if isFirstSideInGroup}
-                            <ComputeColumn
-                                projectId = {data['group_number']}
-                                groupPk = {groupPk}
-                                mediaType = "slides"/>
-                        {:else}
-                            <BlankColumn widthName = "compute"/>
+                            <!-- Audio tab doesn't always include these -->
+                            {#if !isAudio}
+                                <EditingColumn bind:groupData={groupData}
+                                    groupPk = {groupPk}/>
+                                <TextColumn bind:groupData groupPk={groupPk}
+                                    colName="comments" widthName="comments"/>
+                                <ComputeColumn
+                                    projectId = {data['group_number']}
+                                    groupPk = {groupPk}
+                                    mediaType = {$CurrentMainTab}/>
+                            {/if}
+                        </ol>
+                    
+                        <!-- Audio tab final line break is handled differently -->
+                        {#if i < Object.entries(getCurrentGroups()).length - 1 && (!isAudio || isLastSideInGroup)}
+                            <ListContainerLineBreak
+                                insertAtGroupNumber={groupNumber + 1}
+                                dotted={true}
+                                drawInsert={editingMode}/>
                         {/if}
-
-                    {:else if $CurrentMainTab == "film"}
-                        <DropdownColumn bind:groupData groupPk={groupPk}
-                            options={filmTypes}
-                            colName="film_type" editingMode = {editingMode}
-                            requireEditingMode={true}/>
-                        <DropdownColumn bind:groupData groupPk={groupPk}
-                            options={filmQualities}
-                            colName="film_quality" editingMode = {editingMode}
-                            requireEditingMode={true}/>
-                        <DropdownColumn bind:groupData groupPk={groupPk}
-                            options={filmSoundSyncStatuses}
-                            colName="sound_sync_status"/>
-                        <InputColumn bind:groupData groupPk={groupPk}
-                            intakeName="est_length"
-                            finalName="act_length" overlayCounts = {true} warnOnDifferent = {false} enforceNumbers = {true} editingMode = {editingMode}/>
-
-                    {:else}
-                        <TempMessage message = {`${$CurrentMainTab} is not yet implemented!`}/>
-                    {/if}
-                
-                <!-- Audio tab doesn't always include these -->
-                {#if !isAudio}
-                    <EditingColumn bind:groupData={groupData}
-                        groupPk = {groupPk}/>
-                    <TextColumn bind:groupData groupPk={groupPk}
-                        colName="comments" widthName="comments"/>
-                    <ComputeColumn
-                        projectId = {data['group_number']}
-                        groupPk = {groupPk}
-                        mediaType = {$CurrentMainTab}/>
+                    {/each}
                 {/if}
-            </ol>
-            
-            <!-- Audio tab final line break is handled differently -->
-            {#if i < Object.entries(getCurrentGroups()).length - 1 && (!isAudio || isLastSideInGroup)}
-                <ListContainerLineBreak
-                    insertAtGroupNumber={groupNumber + 1}
-                    dotted={true}
-                    drawInsert={editingMode}/>
-            {/if}
-        {/each}
-    {/if}
-    </JobDisplay>
-
+            </JobDisplay>
+        {/if}
     {:else}
-        <TempMessage message={error ? `No project with ID ${data.id} exists.` : "Loading..."}/>
+        <TempMessage>
+            {#if error == 1}
+                No project with ID ${data.id} exists.
+            {:else}
+                Loading...
+            {/if}
+        </TempMessage>
     {/if}
 </ListContainer>
 

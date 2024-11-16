@@ -1,8 +1,7 @@
 <script>
     import { getContext } from 'svelte';
     import { widthConsts } from '../widthConsts.js';
-    let validateChangeGroupNumber = getContext('validateChangeGroupNumber');
-    let sortJobsByGroupNumber = getContext('sortJobsByGroupNumber');
+    let addChangeGroupNumberUpdate = getContext('addChangeGroupNumberUpdate');
 
     export let groupPk, groupData;
     export let editingMode = false;
@@ -18,16 +17,10 @@
         let resultStr = result ? result : '';
 
         // Check if this value is valid 
-        if(validateChangeGroupNumber(groupPk, resultStr)) {
-            value.target.value = resultStr;
-            groupData["group_number"] = resultStr;
-            groupData = groupData;
-            sortJobsByGroupNumber(false);
-            console.log("Changed successfully!");
-        } else {
-            console.log("Invalid index number!");
-        }
-        value.target.value = groupData["group_number"];
+        addChangeGroupNumberUpdate(groupPk, resultStr);
+        value.target.value = resultStr;
+        groupData["group_number"] = resultStr;
+        groupData = groupData;
     }
 </script>
 
@@ -52,6 +45,6 @@
         margin: 0 -2.5px; /* To fix added padding */
         border-radius: 5px;
         min-height: 20px;
-        background-color: var(--clr-primary-5);;
+        background-color: var(--clr-primary-5);
     }
 </style>

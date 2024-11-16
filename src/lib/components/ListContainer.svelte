@@ -1,6 +1,6 @@
 <script>
     import { CurrentMainTab } from '$lib/scripts/mtd-store.js';
-    import AddIcon from "$lib/assets/add_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg";
+    import EditIcon from "$lib/assets/edit_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg";
 
     export let minWidthRem = 0;
     export let minWidthPx = 0;
@@ -20,25 +20,23 @@
 -->
 <div style="width:calc(calc({minWidthRem}rem + {minWidthPx}px) + calc(var(--gap-listcontainer) * 2)); height: 0.01px; background-color: green; opacity: 0%"></div>
 
-{#if tabs.length}
-    <ol style="--minWidth: calc({minWidthRem}rem + {minWidthPx}px);" class="container-spacer tab-bar">
-        <li class="tabs-indent"/>
-        {#each tabs as tab}
-            <li class="tab" style="{tab == $CurrentMainTab ? "border-bottom-width: 0px;" : "background-color: var(--clr-primary-5-1);"}">
-                <button on:click={ setTab({tab}) }>
-                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
-            </li>
-        {/each}
-        {#if addTab != null}
-        <li class="tab" style="background-color: var(--clr-primary-5-1)">
-            <button on:click={ addTab() }>
-                <img style="height:100%; margin: -5px; background-color: none;" src={AddIcon} alt="Add Icon"/>
+<ol style="--minWidth: calc({minWidthRem}rem + {minWidthPx}px);" class="container-spacer tab-bar">
+    <li class="tabs-indent"/>
+    {#each tabs as tab}
+        <li class="tab" style="{tab == $CurrentMainTab ? "border-bottom-width: 0px;" : "background-color: var(--clr-primary-5-1);"}">
+            <button on:click={ setTab({tab}) }>
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
         </li>
-        {/if}
-    </ol>
-{/if}
+    {/each}
+    {#if addTab != null}
+        <li class="tab" style="background-color: var(--clr-primary-5-1)">
+            <button on:click={ addTab() }>
+                <img style="height:100%; margin: -5px; background-color: none;" src={EditIcon} alt="Add Icon"/>
+            </button>
+        </li>
+    {/if}
+</ol>
 
 <div style="--minWidth: calc({minWidthRem}rem + {minWidthPx}px); top: {tabs.length && $CurrentMainTab  ? "0px" : "var(--gap-listcontainer)"};" class="container-spacer list-container">
     <slot>

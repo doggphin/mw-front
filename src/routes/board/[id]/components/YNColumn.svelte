@@ -58,4 +58,7 @@
         min-height: 20px;
         background-color: var(--clr-primary-5);
     }
+    div {
+        min-width: 0;
+    }
 </style>

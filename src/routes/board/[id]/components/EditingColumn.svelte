@@ -66,6 +66,7 @@
         position: relative; 
         min-width: 0;
         margin: 0 -2.5px;
+        padding: 0;
     }
     .editing-tag-container {
         display: flex;

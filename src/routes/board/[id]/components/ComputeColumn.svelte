@@ -22,6 +22,10 @@
 
 
 <style>
+    div {
+        padding: 0;
+        margin: 0;
+    }
     button {
         min-width: 0;
     }
