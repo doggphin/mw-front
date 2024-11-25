@@ -1,5 +1,10 @@
 <script>
     import { PageNameStore } from '$lib/scripts/mtd-store.js';
+    import { page } from '$app/stores';
+    import { logOut, getIsLoggedIn } from '$lib/scripts/helpers.js';
+    import { goto } from '$app/navigation';
+    import { onMount } from 'svelte';
+    import { Modals, closeModal } from 'svelte-modals';
 
     import ListContainerLineBreak from '$lib/components/ListContainerLineBreak.svelte'
     import NavButton from "$lib/components/NavButton.svelte";
@@ -10,7 +15,25 @@
     import HubImage from '$lib/assets/hub_24dp_FILL0_wght400_GRAD0_opsz24.svg';
     import Logo from '$lib/assets/logo.svg';
 
-    import { Modals, closeModal } from 'svelte-modals';
+    let isLoggedIn = false;
+
+    
+    function onPageChange() {
+        console.log('Page changed:', $page.url.pathname);
+        isLoggedIn = getIsLoggedIn();
+    }
+
+    let unsubscribe;
+    onMount(() => {
+        unsubscribe = page.subscribe(($page) => {
+            onPageChange();
+        });
+
+        return () => {
+            unsubscribe(); // Cleanup the subscription on component unmount
+        };
+    });
+
 </script>
 
 <div class="page">
@@ -26,6 +49,17 @@
     <div class="content">
         <div class="header">
             <h1 class="page-name">{$PageNameStore}</h1>
+            <a class="login-container" href="/login/">
+                {#if !isLoggedIn }
+                    <button class="login-button" href="/login/">
+                        <h3> Log In </h3>
+                    </button>
+                {:else}
+                    <button class="login-button" on:click={ logOut }>
+                        <h3> Log Out </h3>
+                    </button>
+                {/if}
+            </a>
         </div>
         <div class="main-body">
             <slot />
@@ -43,7 +77,27 @@
 </Modals>
 
 <style>
+    .login-container {
+        align-content: center;
+        display: flex;
+        margin: auto;
+        margin-right: 225px;
+        gap: 20px;
+    }
+
+    .login-button {
+        padding: 5px;
+        width: 100px;
+        height: 35px;
+        align-content: center;
+    }
+
     @media only screen and (max-width: 768px) {
+        .login-container {  
+            align-content: center;
+            margin-right: 25px;
+            padding: 0;
+        }
         .page {
             display: fixed;
             right: 0px;
@@ -66,11 +120,12 @@
         }
         .header {
             position: fixed;
+            justify-content: space-between;
             display: flex;
             top: 50px;
             left: 0px;
             right: 0px;
-            height: 50px;
+            height: 60px;
             background-color: white;
             border-bottom: calc(var(--gap-listcontainer) / 2);
             border-bottom: var(--border-size-med) solid var(--clr-primary-5-1);
@@ -125,7 +180,7 @@
             width: 100%;
             position: fixed;
             background-color: white;
-            height: 75px;
+            height: 60px;
             display: flex;
             container-type: inline-size;
             width: 100%;
@@ -156,5 +211,9 @@
             position: relative;
             top: 75px;
         }
+    }
+
+    .header {
+        align-content: center;
     }
 </style>

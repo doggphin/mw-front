@@ -119,6 +119,7 @@ h3 {
 	background-color: var(--clr-photos);
 }
 
+
 .little-button-container {
 	width: 20px;
 	height: 20px;
@@ -130,4 +131,15 @@ h3 {
 }
 .little-button-container:hover {
 	opacity: 100%;
+}
+
+
+button {
+	border: none;
+	border-radius: 5px;
+	background-color: var(--clr-primary-5);
+}
+button:hover {
+	background-color: var(--clr-primary-5-1);
+	cursor: pointer;
 }

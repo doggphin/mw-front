@@ -128,3 +128,44 @@ export function formattedTimeToHoursMinutesSeconds(str) {
         alert(`Non number included in the time value ${str}!`);
     }
 }
+
+
+// Function to get a specific cookie value by name
+export function getCookieValue(name) {
+    const cookies = document.cookie.split('; ');
+    
+    for (const cookie of cookies) {
+        const [key, value] = cookie.split('=');
+        if (key === name) {
+            return value;
+        }
+    }
+
+    return null; // Return null if the cookie is not found
+}
+
+
+export function getBaseRequestHeader(method_type) {
+    return {
+        method : method_type,
+        headers : {
+            "Authorization" : getCookieValue("MemoryWare_AuthToken")
+        }
+    }
+}
+
+
+export function getIsLoggedIn() {
+    let isLoggedIn = getCookieValue("MemoryWare_AuthToken") != null;
+    
+    console.log(isLoggedIn);
+
+    return isLoggedIn;
+}
+
+
+export function logOut() {
+    document.cookie = "MemoryWare_AuthToken=; max-age=0; path=/";
+    document.cookie = "MemoryWare_UserEmail=; max-age=0; path=/";
+    document.cookie = "MemoryWare_UserId=; max-age=0; path=/";
+}

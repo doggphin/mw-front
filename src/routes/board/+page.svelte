@@ -1,7 +1,8 @@
 <script>
     import {PageNameStore, CurrentMainTab } from '$lib/scripts/mtd-store.js';
     import { PUBLIC_IP_HTTP_BACKEND } from '$env/static/public';
-    import {onMount} from 'svelte';
+    import { onMount } from 'svelte';
+    import { getBaseRequestHeader } from "$lib/scripts/helpers.js";
     import ListContainer from "$lib/components/ListContainer.svelte";
     import ListContainerLineBreak from "$lib/components/ListContainerLineBreak.svelte";
     import TempMessage from "$lib/components/TempMessage.svelte";
@@ -17,14 +18,24 @@
         PageNameStore.set("Project Board");
 
         const endpoint = `${PUBLIC_IP_HTTP_BACKEND}/projects/board/`;
-        const response = await fetch(endpoint, {method: "GET"});
+
+        let request = getBaseRequestHeader("GET");
+
+        const response = await fetch(endpoint, request);
 
         let data = {}
+
         if(response.status == 200) {
             data = await response.json();
             error = "No projects exist!";
-        } else
-            error = `Error retrieving project board: Error ${response.status}!`;
+        } else {
+            if(response.status == 401) {
+                error = "You must be logged in to view this page!";
+            } else {
+                error = `Error retrieving project board: Error ${response.status}!`;
+            }
+        }
+            
         
         board = data;
     });

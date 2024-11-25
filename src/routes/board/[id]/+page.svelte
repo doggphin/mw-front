@@ -1,7 +1,7 @@
 <script>
     import { openModal } from 'svelte-modals';
     import { PageNameStore, CurrentMainTab, ProjectWebsocket, UpdateProject } from '$lib/scripts/mtd-store.js';
-    import { getRandom, characterComesBefore } from '$lib/scripts/helpers.js';
+    import { getRandom, characterComesBefore, getBaseRequestHeader } from '$lib/scripts/helpers.js';
     import { handleUpdateEditingTag, addTempEditingTag, removeEditingTag } from "$lib/scripts/project.js";
     import { PUBLIC_IP_HTTP_BACKEND, PUBLIC_IP_WS_BACKEND } from '$env/static/public';
     import { widths, widthConsts } from './widthConsts.js';
@@ -137,7 +137,10 @@
         }
 
         const endpoint = `${PUBLIC_IP_HTTP_BACKEND}/projects/${data.id}`;
-        const response = await fetch(endpoint, {method: "GET"});
+
+        let request = getBaseRequestHeader("GET");
+
+        const response = await fetch(endpoint, request);
 
         if(response.status == 200) {
             project = await response.json();
@@ -160,7 +163,12 @@
             }
         } else {
             PageNameStore.set("Error retrieving project");
-            error = true;
+            
+            if(response.status == 401) {
+                error = "You must be logged in to view this page!";
+            } else {
+                error = `Error retrieving project: Error ${response.status}`;
+            }
         }
     }
 
@@ -799,8 +807,8 @@
         {/if}
     {:else}
         <TempMessage>
-            {#if error == 1}
-                No project with ID ${data.id} exists.
+            {#if error}
+                { error }
             {:else}
                 Loading project...
             {/if}
