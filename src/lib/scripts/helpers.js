@@ -1,3 +1,7 @@
+import { ProjectWebsocket } from '$lib/scripts/mtd-store.js';
+import { get } from 'svelte/store';
+
+
 export let backendIp = 'localhost:8000';
 
 
@@ -39,7 +43,6 @@ export function getKeyByValue(object, value) {
 
 
 export function conformStringToNumber(value, max = 32767) {
-    console.log(value);
     let ret = value; 
 
     ret.replace(/[^0-9]/g, '');
@@ -132,11 +135,16 @@ export function formattedTimeToHoursMinutesSeconds(str) {
 
 // Function to get a specific cookie value by name
 export function getCookieValue(name) {
+    if(document == null) {
+        return null;
+    }
+
     const cookies = document.cookie.split('; ');
     
     for (const cookie of cookies) {
         const [key, value] = cookie.split('=');
         if (key === name) {
+            console.log(value);
             return value;
         }
     }
@@ -145,10 +153,24 @@ export function getCookieValue(name) {
 }
 
 
+export function getToken(includePrefix) {
+    let token = getCookieValue("MemoryWare_AuthToken")
+
+    if(token == null) {
+        return "";
+    }
+
+    return includePrefix ?
+        token
+        : token.split(' ')[1] ?? "";
+}
+
+
 export function getBaseRequestHeader(method_type) {
     return {
         method : method_type,
         headers : {
+            "Content-Type" : "application/json",
             "Authorization" : getCookieValue("MemoryWare_AuthToken")
         }
     }
@@ -157,15 +179,29 @@ export function getBaseRequestHeader(method_type) {
 
 export function getIsLoggedIn() {
     let isLoggedIn = getCookieValue("MemoryWare_AuthToken") != null;
-    
-    console.log(isLoggedIn);
 
     return isLoggedIn;
 }
 
 
 export function logOut() {
+    if(document == null) {
+        return;
+    }
+
     document.cookie = "MemoryWare_AuthToken=; max-age=0; path=/";
     document.cookie = "MemoryWare_UserEmail=; max-age=0; path=/";
     document.cookie = "MemoryWare_UserId=; max-age=0; path=/";
+}
+
+
+export function startWebsocketConnection(endpoint) {
+    let websocket = get(ProjectWebsocket);
+    if(websocket != null) {
+        websocket.close();
+    }
+
+    ProjectWebsocket.set(new WebSocket(endpoint));
+
+    console.log("Connected!");
 }

@@ -1,5 +1,5 @@
 <script>
-    import { widthConsts } from "../widthConsts.js";
+    import { widthConsts } from "$lib/components/columns/widthConsts.js";
 
     export let groupData, colName, widthName;
 

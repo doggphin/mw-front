@@ -186,6 +186,7 @@
             width: 100%;
             border-bottom: calc(var(--gap-listcontainer) / 2);
             border-bottom: var(--border-size-med) solid var(--clr-primary-5-1);
+            z-index: 10;
         }
         /* https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_containment/Container_queries */
         /* Try to use this instead */

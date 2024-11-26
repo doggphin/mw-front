@@ -1,7 +1,7 @@
 <script>
     import { getContext } from 'svelte';
     import { boolToChar } from '$lib/scripts/helpers.js';
-    import { widthConsts } from '../widthConsts.js';
+    import { widthConsts } from '$lib/components/columns/widthConsts.js';
     let addGroupUpdate = getContext('addGroupUpdate');
 
     export let groupPk, defaultTo, colName, groupData;

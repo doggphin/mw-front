@@ -1,33 +1,30 @@
 <script>
-    import { getContext } from 'svelte';
-    import { boolToChar } from '$lib/scripts/helpers.js';
-    import { widthConsts } from '../widthConsts.js';
-    let addGroupUpdate = getContext('addGroupUpdate');
+    import { widthConsts } from './widthConsts.js';
 
-    export let groupPk, options, colName, groupData;
-    export let widthName = "dropdown";
-    export let requireEditingMode = false;
-    export let editingMode = false;
+    export let id,
+        dropdownOptions,
+        columnName,
+        dataSource,
+        updateValueFunction,
+        requireEditingMode = false,
+        editingMode = false,
+        widthName = "dropdown";
 
     let width = widthConsts[widthName];
 
     function updateValue(val) {
-        let newValue = val.target.value;
-        groupData[colName] = newValue;
-        addGroupUpdate(groupPk, colName, newValue)
+        updateValueFunction(id, columnName, val.target.value)
     }
-
-    $: editingMode;
 </script>
 
 
 {#if !requireEditingMode || editingMode}
-    <select class = "hide-text"
+    <select class="hide-text"
         style="flex: {width} 0 {width}rem;"
         on:change={(val) => updateValue(val)}
     >
-        {#each options as option}
-            {#if groupData[colName] == option}
+        {#each dropdownOptions as option}
+            {#if dataSource[columnName] == option}
                 <option value={option} selected>{option}</option>
             {:else}
                 <option value={option}>{option}</option>
@@ -36,7 +33,7 @@
     </select>
 {:else}
     <div class="hide-text" style="flex: {width} 0 {width}rem;">
-        {groupData[colName]}
+        {dataSource[columnName]}
     </div>
 {/if}
 
@@ -52,6 +49,7 @@
     select:hover {
         background-color: var(--clr-primary-5-1);
     }
+
     .hide-text {
         min-width: 0;
         overflow: hidden;

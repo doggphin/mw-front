@@ -1,6 +1,6 @@
 <script>
     import { getContext } from 'svelte';
-    import { widthConsts } from '../widthConsts.js';
+    import { widthConsts } from '$lib/components/columns/widthConsts.js';
     let addChangeGroupNumberUpdate = getContext('addChangeGroupNumberUpdate');
 
     export let groupPk, groupData;

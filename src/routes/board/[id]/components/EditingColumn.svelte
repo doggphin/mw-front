@@ -1,7 +1,7 @@
 <script>
     import { getContext } from 'svelte';
     import { openModal } from 'svelte-modals';
-    import { widthConsts } from '../widthConsts.js';
+    import { widthConsts } from '$lib/components/columns/widthConsts.js';
     import { secondsToFormattedTime } from "$lib/scripts/helpers.js";
     import { editingTypesToLabel, editingTypes } from "$lib/scripts/editing.js"
     import EditingModal from "./EditingModal.svelte";

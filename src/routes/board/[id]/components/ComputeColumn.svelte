@@ -1,5 +1,5 @@
 <script>
-    import { widthConsts } from '../widthConsts.js';
+    import { widthConsts } from '$lib/components/columns/widthConsts.js';
     import FolderWorkIcon from "$lib/assets/folder_data_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg";
 
     export let projectId, mediaType, groupPk;

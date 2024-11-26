@@ -1,21 +1,42 @@
 <script>
-    import {PageNameStore, CurrentMainTab } from '$lib/scripts/mtd-store.js';
-    import { PUBLIC_IP_HTTP_BACKEND } from '$env/static/public';
+    import { PageNameStore, CurrentMainTab, ProjectWebsocket } from '$lib/scripts/mtd-store.js';
+    import { PUBLIC_IP_HTTP_BACKEND, PUBLIC_IP_WS_BACKEND } from '$env/static/public';
     import { onMount } from 'svelte';
-    import { getBaseRequestHeader } from "$lib/scripts/helpers.js";
+    import { getBaseRequestHeader, getToken, startWebsocketConnection } from "$lib/scripts/helpers.js";
     import ListContainer from "$lib/components/ListContainer.svelte";
     import ListContainerLineBreak from "$lib/components/ListContainerLineBreak.svelte";
     import TempMessage from "$lib/components/TempMessage.svelte";
+    import { handleReceivedUpdate } from "./boardMessages.js";
 
     import SortButton from "./components/SortButton.svelte";
 
     let board = {};
     let error = 0;
     let tabs = ["In-Progress", "Finished"];
+    let websocketMessageHandlers = {
+        "projects.update_project" : () => { alert("Updating project!!!"); },
+        "projects.add_project" : () => { alert("Adding project!!!"); },
+        "projects.delete_project" : () => { alert("Deleting project!!!"); }
+    };
     CurrentMainTab.set("In-Progress");
+
+    
+    function connectToWebsocket() {
+        let token = getToken(false);
+        startWebsocketConnection(`${PUBLIC_IP_WS_BACKEND}/ws/project/board/?token=${token}`);
+
+        $ProjectWebsocket.onmessage = (event) => {
+            console.log("a");
+            let event_json = JSON.parse(event.data);
+            handleReceivedUpdate(event_json, websocketMessageHandlers);
+        };
+    }
+
 
     onMount(async() => {
         PageNameStore.set("Project Board");
+
+        connectToWebsocket();
 
         const endpoint = `${PUBLIC_IP_HTTP_BACKEND}/projects/board/`;
 
@@ -35,7 +56,7 @@
                 error = `Error retrieving project board: Error ${response.status}!`;
             }
         }
-            
+        filteredBoard = board;
         
         board = data;
     });
@@ -53,6 +74,7 @@
             return 0;
         }
     }
+
     
     function compareLocations(a, b) {
         if(a['location'] < b['location']) {
@@ -63,6 +85,7 @@
             return compareNames(a, b);
         }
     }
+
 
     function compareDates(a, b, fieldName) {
         let aMonth, aDay, aYear;
@@ -87,9 +110,11 @@
             return compareNames(a, b);
     }
 
+
     function compareDueDates(a, b) {
         return compareDates(a, b, "date_due_formatted");
     }
+
 
     function compareInDates(a, b) {
         return compareDates(a, b, "date_in_formatted");
@@ -114,13 +139,13 @@
         onlyHardDues : false
     }
 
+
     function filterBoard(board, filters, tab) {
-        console.log("filtering");
         return board.filter((project) => {
             let location = project['location'];
             if(!filters.locations[location])
-
                 return false;
+            
             if(filters.onlyHardDues && !project['is_hard_due'])
                 return false;
 
@@ -133,6 +158,7 @@
                     break;
                 }
             }
+
             if(containsAnyMediaFilters && !containsRelevantMedia)
                 return false;
 
@@ -147,7 +173,9 @@
     }
 
 
-    function sortBoard(sortBy = "date_due_formatted", ascendingOrder = true) {  
+    function sortBoard(sortBy = "date_due_formatted", ascendingOrder = true) {
+        console.log(`Sorting by ${sortBy}, in ${ascendingOrder ? "ascending" : "descending"} order`);
+        console.log(filteredBoard);
         switch(sortBy) {
             case("location"):
                 filteredBoard.sort(compareLocations);
@@ -162,7 +190,9 @@
                 break;
 
             case("date_due_formatted"):
+                console.log(filteredBoard);
                 filteredBoard.sort(compareDueDates);
+                console.log(filteredBoard);
                 break;
 
             case("date_in_formatted"):
@@ -174,11 +204,14 @@
                 return;
         }
         
-        if(ascendingOrder) {
+        /*if(ascendingOrder) {
             filteredBoard = filteredBoard.reverse();
         } else {
             filteredBoard = filteredBoard;
-        }
+        }*/
+
+        filteredBoard = filteredBoard;
+        //filteredBoard = filteredBoard;
     }
 
     $: filteredBoard = board?.length > 0 ? filterBoard(board, filters, $CurrentMainTab) : {};

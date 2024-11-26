@@ -4,7 +4,7 @@
     export let dotted = false;
     export let drawInsert = false;
     export let endOfContainerInsert = false;
-    export let insertAtGroupNumber;
+    export let insertAtGroupNumber = null;
 
     let sendInsertGroupRequest = getContext("sendInsertGroupRequest");
 </script>
@@ -19,7 +19,7 @@
     </div>
 {/if}
 
-{#if drawInsert}
+{#if drawInsert && insertAtGroupNumber !== null}
     {#if endOfContainerInsert}
         <div style="margin-bottom: 10px;"></div>
     {/if}

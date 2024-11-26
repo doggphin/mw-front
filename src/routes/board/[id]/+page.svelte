@@ -1,10 +1,11 @@
 <script>
     import { openModal } from 'svelte-modals';
     import { PageNameStore, CurrentMainTab, ProjectWebsocket, UpdateProject } from '$lib/scripts/mtd-store.js';
-    import { getRandom, characterComesBefore, getBaseRequestHeader } from '$lib/scripts/helpers.js';
+    import {getRandom, characterComesBefore, getBaseRequestHeader,
+        getToken, startWebsocketConnection } from '$lib/scripts/helpers.js';
     import { handleUpdateEditingTag, addTempEditingTag, removeEditingTag } from "$lib/scripts/project.js";
     import { PUBLIC_IP_HTTP_BACKEND, PUBLIC_IP_WS_BACKEND } from '$env/static/public';
-    import { widths, widthConsts } from './widthConsts.js';
+    import { widths, widthConsts } from '../../../lib/components/columns/widthConsts.js';
     import { setContext, onMount, onDestroy } from 'svelte';
     import { getKeyByValue } from "$lib/scripts/helpers.js";
     import { editingTypesToLabel } from "$lib/scripts/editing.js";
@@ -20,7 +21,7 @@
     import TrashColumn from "./components/TrashColumn.svelte";
     import IndexColumn from './components/IndexColumn.svelte';
     import YNColumn from './components/YNColumn.svelte';
-    import DropdownColumn from './components/DropdownColumn.svelte';
+    import DropdownColumn from '$lib/components/columns/DropdownColumn.svelte';
     import InputColumn from './components/InputColumn.svelte';
     import TextColumn from './components/TextColumn.svelte';
     import EditingColumn from './components/EditingColumn.svelte';
@@ -29,7 +30,6 @@
     import StaticTextColumn from './components/StaticTextColumn.svelte';
     import TimeColumn from './components/TimeColumn.svelte';
     import EditJobsModal from './components/EditJobsModal.svelte';
-    import { LoadingManager } from 'three';
 
     export let data;    // Gets page number from page.js
 
@@ -463,19 +463,27 @@
     }
 
 
-    ProjectWebsocket.set(new WebSocket(`${PUBLIC_IP_WS_BACKEND}/ws/project/${data.id}/`));
+    //ProjectWebsocket.set(new WebSocket(`${PUBLIC_IP_WS_BACKEND}/ws/project/${data.id}/`));
     function createWebsocketConnection() {
-        if($ProjectWebsocket != null) {
-            $ProjectWebsocket.close();
-        }
-        ProjectWebsocket.set(new WebSocket(`${PUBLIC_IP_WS_BACKEND}/ws/project/${data.id}/`));
+        let token = getToken(false);
+        startWebsocketConnection(`${PUBLIC_IP_WS_BACKEND}/ws/project/${data.id}/?token=${token}`);
     }
+    createWebsocketConnection();
     $ProjectWebsocket.onclose = (e) => {
-        console.log('Websocket connection closed! Attempting to reconnect...');
-        ProjectWebsocket.set(new WebSocket(`${PUBLIC_IP_WS_BACKEND}/ws/project/${data.id}/`));
+        console.log(e.code);
+        if(e.code == 1006) {
+            error = "You are not authorized to view this page!";
+        } else {
+            error = 'Websocket connection closed! Attempting to reconnect...';
+        }
+        
+        createWebsocketConnection();
     };
     $ProjectWebsocket.onopen = (e) => {
         console.log("Websocket connection opened!");
+        if(project) {
+            error = "";
+        }
     };
     $ProjectWebsocket.onmessage = (event) => {
         try {
@@ -526,7 +534,6 @@
     let listContainerMinWidthPx = 0;
     $: $CurrentMainTab, setWidths()
     function setWidths() {
-        console.log(`Setting width for tab ${CurrentMainTab}`);
         if($CurrentMainTab && $CurrentMainTab != "") {
             [listContainerMinWidthRem, listContainerMinWidthPx] = widths.getWidth($CurrentMainTab.toLowerCase());
         }
@@ -593,8 +600,7 @@
 
 
 {#if project}
-    <button style="position: absolute; right: 20px; top: 15px; z-index: 100; padding:5px;" 
-    on:click={toggleEditingMode}>
+    <button class="editing-button" on:click={toggleEditingMode}>
         {`Switch to ${editingMode ? "Normal" : "Editing"} Mode`}
     </button>
 {/if}
@@ -605,7 +611,7 @@
     tabs={tabsCache} 
     addTab={editingMode ? openEditJobsModal : null}
 >
-    {#if project}
+    {#if project && error == ""}
         {#if $CurrentMainTab == ""}
             No jobs are assigned to this project.
         {:else}
@@ -653,9 +659,13 @@
                             {/if}
                                 
                             {#if $CurrentMainTab == "slides" && slidesGroups}
-                                <DropdownColumn bind:groupData groupPk={groupPk}
-                                    colName="dpi"
-                                    options={[1250, 2500, 5000]} editingMode={editingMode} requireEditingMode={true}/>
+                                <DropdownColumn bind:dataSource={groupData}
+                                    id={groupPk}
+                                    columnName="dpi"
+                                    dropdownOptions={[1250, 2500, 5000]}
+                                    editingMode={editingMode}
+                                    requireEditingMode={true}
+                                    updateValueFunction={addGroupUpdate}/>
                                 <YNColumn bind:groupData groupPk={groupPk}
                                     colName="correct" defaultTo={"N"} editingMode = {editingMode}/>
                                 <InputColumn bind:groupData groupPk={groupPk}
@@ -668,9 +678,13 @@
 
                             {:else if $CurrentMainTab == "prints"}
                                 {@const groupNumber = groupData['group_number']}
-                                <DropdownColumn bind:groupData groupPk={groupPk}
-                                    options={[300, 600, 1200]}
-                                    colName="dpi" editingMode = {editingMode} requireEditingMode={true}/>
+                                <DropdownColumn bind:dataSource={groupData}
+                                    id={groupPk}
+                                    columnName="dpi"
+                                    dropdownOptions={[300, 600, 1200]}
+                                    editingMode={editingMode}
+                                    requireEditingMode={true}
+                                    updateValueFunction={addGroupUpdate}/>
                                 <YNColumn bind:groupData groupPk={groupPk} defaultTo={"N"}
                                     colName="correct" editingMode = {editingMode}/>
                                 <InputColumn bind:groupData groupPk={groupPk}
@@ -685,10 +699,13 @@
 
 
                             {:else if $CurrentMainTab == "negatives"}
-                                <DropdownColumn bind:groupData groupPk={groupPk}
-                                    options={[1250, 1500, 2500, 3000, 4000, 5000]}
-                                    colName="dpi" editingMode = {editingMode}
-                                    requireEditingMode={true}/>
+                                <DropdownColumn bind:dataSource={groupData}
+                                    id={groupPk}
+                                    columnName="dpi"
+                                    dropdownOptions={[1250, 1500, 2500, 3000, 4000, 5000]}
+                                    editingMode={editingMode}
+                                    requireEditingMode={true}
+                                    updateValueFunction={addGroupUpdate}/>    
                                 <YNColumn bind:groupData groupPk={groupPk} defaultTo={"N"}
                                     colName="correct" editingMode = {editingMode}/>
                                 <InputColumn bind:groupData groupPk={groupPk}
@@ -702,8 +719,15 @@
                                     finalName = "final_hs_count" overlayCounts = {true} warnOnDifferent = {true} enforceNumbers = {true} editingMode = {editingMode}/>
 
                             {:else if $CurrentMainTab == "video"}
-                                <DropdownColumn bind:groupData groupPk={groupPk}
-                                    colName="video_type" options={videoTypes} editingMode={editingMode} requireEditingMode={true}/>
+                                <DropdownColumn bind:dataSource={groupData}
+                                    id={groupPk}
+                                    columnName="video_type"
+                                    dropdownOptions={videoTypes}
+                                    editingMode={editingMode}
+                                    requireEditingMode={true}
+                                    updateValueFunction={addGroupUpdate}
+                                />    
+                                
                                 <InputColumn bind:groupData groupPk={groupPk}
                                     intakeName = "est_dvd_number"
                                     finalName = "act_dvd_number" overlayCounts = {true} enforceNumbers = {true} editingMode = {editingMode} widthName = "smallText"/>
@@ -716,8 +740,13 @@
                                     colName = "length"/>
 
                             {:else if $CurrentMainTab == "data"}
-                                <DropdownColumn bind:groupData groupPk={groupPk}
-                                    colName="data_type" options={dataTypes} editingMode={editingMode} requireEditingMode={true}/>
+                                <DropdownColumn bind:dataSource={groupData}
+                                    id={groupPk}
+                                    columnName="data_type"
+                                    dropdownOptions={dataTypes}
+                                    editingMode={editingMode}
+                                    requireEditingMode={true}
+                                    updateValueFunction={addGroupUpdate}/>    
 
 
                             {:else if $CurrentMainTab == "audio"}
@@ -730,18 +759,27 @@
                                     {:else}
                                         <StaticTextColumn bind:groupData widthName = "index" colName = "group_number"/>
                                     {/if}
-                                    <DropdownColumn bind:groupData groupPk={groupPk}
-                                        colName = "audio_type" options = {audioTypes} requireEditingMode = {true} editingMode = {editingMode}/>
+                                    <DropdownColumn bind:dataSource={groupData}
+                                        id={groupPk}
+                                        columnName="audio_type"
+                                        dropdownOptions={audioTypes}
+                                        editingMode={editingMode}
+                                        requireEditingMode={true}
+                                        updateValueFunction={addGroupUpdate}/>    
                                 {:else}
                                     <TrashColumn groupPk={groupPk} editingMode = {editingMode}/>
                                     <BlankColumn widthName = "index"/>
                                     <BlankColumn widthName = "dropdown"/>
                                 {/if}
                                 
-                                <DropdownColumn bind:groupData groupPk={groupPk}
-                                options={['A', 'B', 'C', 'D']}
-                                    colName = "side"
-                                    widthName = "smallText"/>
+                                <DropdownColumn bind:dataSource={groupData}
+                                    id={groupPk}
+                                    columnName="side"
+                                    dropdownOptions={['A', 'B', 'C', 'D']}
+                                    editingMode={editingMode}
+                                    requireEditingMode={true}
+                                    updateValueFunction={addGroupUpdate}
+                                    widthName = "smallText"/>    
                                 <TimeColumn bind:groupData = {groupData} groupPk = {groupPk}
                                     colName = "length"/>
                                 <InputColumn bind:groupData groupPk={groupPk}
@@ -762,17 +800,25 @@
                                 {/if}
 
                             {:else if $CurrentMainTab == "film"}
-                                <DropdownColumn bind:groupData groupPk={groupPk}
-                                    options={filmTypes}
-                                    colName="film_type" editingMode = {editingMode}
-                                    requireEditingMode={true}/>
-                                <DropdownColumn bind:groupData groupPk={groupPk}
-                                    options={filmQualities}
-                                    colName="film_quality" editingMode = {editingMode}
-                                    requireEditingMode={true}/>
-                                <DropdownColumn bind:groupData groupPk={groupPk}
-                                    options={filmSoundSyncStatuses}
-                                    colName="sound_sync_status"/>
+                                <DropdownColumn bind:dataSource={groupData}
+                                    id={groupPk}
+                                    columnName="film_type"
+                                    dropdownOptions={filmTypes}
+                                    editingMode={editingMode}
+                                    requireEditingMode={true}
+                                    updateValueFunction={addGroupUpdate}/>   
+                                <DropdownColumn bind:dataSource={groupData}
+                                    id={groupPk}
+                                    columnName="film_quality"
+                                    dropdownOptions={filmQualities}
+                                    editingMode={editingMode}
+                                    requireEditingMode={true}
+                                    updateValueFunction={addGroupUpdate}/>
+                                <DropdownColumn bind:dataSource={groupData}
+                                    id={groupPk}
+                                    columnName="sound_sync_status"
+                                    dropdownOptions={filmSoundSyncStatuses}
+                                    updateValueFunction={addGroupUpdate}/>
                                 <InputColumn bind:groupData groupPk={groupPk}
                                     intakeName="est_length"
                                     finalName="act_length" overlayCounts = {true} warnOnDifferent = {false} enforceNumbers = {true} editingMode = {editingMode}/>
@@ -819,6 +865,17 @@
 
 
 <style>
+    .editing-button {
+        position: absolute;
+        right: 20px;
+        top: 15px;
+        z-index: 5;
+        padding:5px;
+        background-color: var(--clr-primary-5-1);
+    }
+    .editing-button:hover {
+        background-color: var(--clr-primary-5-2);
+    }
     ol {
         display: flex;
         align-items: center;

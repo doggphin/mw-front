@@ -1,7 +1,7 @@
 <script>
     import ListContainerLineBreak from "$lib/components/ListContainerLineBreak.svelte";
     import TitleRow from "./TitleRow.svelte";
-    import { widths } from "./../widthConsts.js";
+    import { widths } from "$lib/components/columns/widthConsts.js";
 
     export let name, editingMode, maxGroupNumber;
 </script>
