@@ -1,11 +1,11 @@
 <script>
     import { openModal } from 'svelte-modals';
     import { PageNameStore, CurrentMainTab, ProjectWebsocket, UpdateProject } from '$lib/scripts/mtd-store.js';
-    import {getRandom, characterComesBefore, getBaseRequestHeader,
-        getToken, startWebsocketConnection } from '$lib/scripts/helpers.js';
+    import { getRandom, characterComesBefore, getBaseRequestHeader, startWebsocketConnection } from '$lib/scripts/helpers.js';
+    import { UserId, getToken } from "$lib/scripts/login.js";
     import { handleUpdateEditingTag, addTempEditingTag, removeEditingTag } from "$lib/scripts/project.js";
     import { PUBLIC_IP_HTTP_BACKEND, PUBLIC_IP_WS_BACKEND } from '$env/static/public';
-    import { widths, widthConsts } from '../../../lib/components/columns/widthConsts.js';
+    import { widths, widthConsts } from '$lib/components/columns/widthConsts.js';
     import { setContext, onMount, onDestroy } from 'svelte';
     import { getKeyByValue } from "$lib/scripts/helpers.js";
     import { editingTypesToLabel } from "$lib/scripts/editing.js";
@@ -23,7 +23,7 @@
     import YNColumn from './components/YNColumn.svelte';
     import DropdownColumn from '$lib/components/columns/DropdownColumn.svelte';
     import InputColumn from './components/InputColumn.svelte';
-    import TextColumn from './components/TextColumn.svelte';
+    import TextColumn from '$lib/components/columns/TextColumn.svelte';
     import EditingColumn from './components/EditingColumn.svelte';
     import ComputeColumn from './components/ComputeColumn.svelte';
     import BlankColumn from './components/BlankColumn.svelte';
@@ -38,17 +38,7 @@
     let project = null;
     let tabsCache = [];
     CurrentMainTab.set("");
-    // An identifier token is attached to modification requests to (until profiles are set up) determine what session sent it
-    // If a frontend session receives an update, if it came from themselves, it is ignored, or in some situations, used to update temporary values.
-    const SESSION_TOKEN = getRandom(-2147483648, 2147483647);
-    let groupUpdateQueue = {
-        'token': SESSION_TOKEN,
-        'type': "update_group",
-        'data': {
-            'token' : SESSION_TOKEN,
-            'updates' : []
-        }
-    };
+    let groupUpdateQueue;
 
     $: projectJobs = project?.["jobs"];
     $: slidesGroups = projectJobs?.["slides"]?.["groups"];
@@ -178,11 +168,23 @@
         PageNameStore.set("");
         CurrentMainTab.set("");
         getProjectData();
+
+        groupUpdateQueue = {
+            'type': "update_group",
+            'data': {
+                'updates' : []
+            }
+        };
     });
     
 
     // Adds an update to append to the list of updates to intermittently send to the server.
     function addGroupUpdate(groupPk, colName, val) {
+
+        if(colName != "editing_tags") {
+            applyGroupUpdate(groupPk, colName, val, $CurrentMainTab);
+        }
+
         // Try to replace any previous updates with this update if possible
         for(let i=0; i<groupUpdateQueue.data.updates.length; i++) {         
             if($CurrentMainTab == groupUpdateQueue.data.updates[i]['job_name']
@@ -193,6 +195,7 @@
                 return;
             }
         }
+        
         groupUpdateQueue.data.updates.push({
             'job_name' : $CurrentMainTab,
             'group_pk' : groupPk,
@@ -212,6 +215,7 @@
     /*
         Sends the group update queue off to the server to update the database.
     */
+    // TODO: I'm pretty certain this only sends one update...
     function sendGroupUpdates() {
         if(groupUpdateQueue.data.updates.length > 0) {
             sendRequest(groupUpdateQueue);
@@ -241,7 +245,6 @@
         sendRequest({
             "type" : "insert_group",
             "data" : {
-                "token" : SESSION_TOKEN,
                 "job_name" : $CurrentMainTab,
                 "at_group_number" : atGroupNumber
             }
@@ -258,7 +261,6 @@
         sendRequest({
             "type" : "delete_group",
             "data" : {
-                "token" : SESSION_TOKEN,
                 "job_name" : $CurrentMainTab,
                 "group_pk" : idToDelete
             }
@@ -373,23 +375,26 @@
         let groupPk = msg['group_pk'];
         let colName = msg['col_name'];
         let val = msg['val'];
-        let token = msg['token'];
+        let userId = msg['user_id'];
         let jobName = msg['job_name'];
 
+        if(userId === $UserId && colName != "editing_tags") {
+            return;
+        }
+
+        applyGroupUpdate(groupPk, colName, val, jobName, userId);
+    }
+
+
+    function applyGroupUpdate(groupPk, colName, val, jobName, userId = null) {
         let group = getGroupsByJobName(jobName)[groupPk];
 
         if (group) {
-            console.log("updating....");
-
             switch(colName) {
                 case 'editing_tags':
-                    handleUpdateEditingTag(group, val, token, SESSION_TOKEN);
+                    handleUpdateEditingTag(group, val, userId, userId);
                     break;
                 default:
-                    // If the token on this update is the same as my current token, that means I sent it, so it can be ignored
-                    if(token === SESSION_TOKEN) {
-                        return;
-                    }
                     group[colName] = val;
                     break;
             }
@@ -397,8 +402,8 @@
             console.log("updated");
             
             updateDomChangingVariable += 1;
-            project = project;  // Update DOM
             group = group;
+            project = project;  // Update DOM
         } else {
             console.log("Error reading websocket message : Invalid job!");
         }
@@ -406,31 +411,31 @@
 
 
     function handleReceiveGroupDelete(receivedJson) {
-        let token = receivedJson['token'];
-        let group_pk = receivedJson['group_pk'];
+        let userId = userId['user_id'];
+        let groupPk = receivedJson['group_pk'];
         let job = receivedJson['job'];
 
         console.log(job);
 
-        if(SESSION_TOKEN == token) {
+        if($UserId == userId) {
             console.log("Ignoring a delete request sent from this client.");
             return;
         }
 
-        delete getGroupsByJobName(job)[group_pk];
+        delete getGroupsByJobName(job)[groupPk];
 
         project = project;
     }
 
     
     function handleReceiveJobAdd(receivedJson) {
-        let token = receivedJson['token'];
+        let userId = receivedJson['user_id'];
         let jobName = receivedJson['job_name'];
         let formattedName = receivedJson['new_formatted_project_name'];
         
         PageNameStore.set(formattedName);
 
-        if(token == SESSION_TOKEN) {
+        if($UserId == userId) {
             console.log("Ignoring own job add packet.");
             return;
         }
@@ -446,13 +451,13 @@
 
 
     function handleReceiveJobDelete(receivedJson) {
-        let token = receivedJson['token'];
+        let userId = receivedJson['user_id'];
         let jobName = receivedJson['job_name'];
         let formattedName = receivedJson['new_formatted_project_name'];
         
         PageNameStore.set(formattedName);
 
-        if(token == SESSION_TOKEN) {
+        if($UserId == userId) {
             console.log("Ignoring own job add packet.");
             return;
         }
@@ -470,14 +475,20 @@
     }
     createWebsocketConnection();
     $ProjectWebsocket.onclose = (e) => {
-        console.log(e.code);
-        if(e.code == 1006) {
-            error = "You are not authorized to view this page!";
-        } else {
-            error = 'Websocket connection closed! Attempting to reconnect...';
+        if(e.code == 1000) {
+            // Closed gracefully, do nothing
+            return;
         }
         
-        createWebsocketConnection();
+        if(e.code == 1006) {
+            error = `Websocket error 1006: The server shut down unexpectedly!`;
+        } else if(e.code == 1011) {
+            error = `Websocket error 1011: Kicked by the server!`;
+        } else {
+            error = `Websocket error ${e.code}`
+        }
+
+        alert(error);
     };
     $ProjectWebsocket.onopen = (e) => {
         console.log("Websocket connection opened!");
@@ -486,40 +497,38 @@
         }
     };
     $ProjectWebsocket.onmessage = (event) => {
-        try {
-            const event_json = JSON.parse(event.data);
-            const msg = event_json['message'];
-            const packet_type = event_json['type'];
+        const event_json = JSON.parse(event.data);
+        console.log(event_json);
+        const msg = event_json['message'];
+        console.log(msg);
+        const packet_type = event_json['type'];
 
-            switch(event_json['type']) {
+        switch(event_json['type']) {
 
-                case "projects.update_group":
-                    console.log("Received!");
-                    handleReceiveGroupUpdate(msg);
-                    break;
-                
-                case "projects.delete_group":
-                    handleReceiveGroupDelete(msg);
-                    break;
+            case "projects.update_group":
+                console.log("Received!");
+                handleReceiveGroupUpdate(msg);
+                break;
+            
+            case "projects.delete_group":
+                handleReceiveGroupDelete(msg);
+                break;
 
-                case "projects.force_update": //TODO : don't do this. introduces a shitton of lag
-                    getProjectData(false);
-                    break;
+            case "projects.force_update": //TODO : don't do this. introduces a shitton of lag
+                getProjectData(false);
+                break;
 
-                case "projects.add_job":
-                    handleReceiveJobAdd(msg);
-                    break;
+            case "projects.add_job":
+                handleReceiveJobAdd(msg);
+                break;
 
-                case "projects.delete_job":
-                    handleReceiveJobDelete(msg);
-                    break;
+            case "projects.delete_job":
+                handleReceiveJobDelete(msg);
+                break;
 
-                default:
-                    console.log(`Unrecognized packet type received: ${packet_type}`)
-            }          
-        } catch(e) {
-            console.log(`Error reading websocket message : ${e}`);
-        }
+            default:
+                console.log(`Unrecognized packet type received: ${packet_type}`)
+        }          
     };
 
 
@@ -554,7 +563,6 @@
         sendRequest({
             "type" : "add_job",
             "data" : {
-                "token" : SESSION_TOKEN,
                 "job_name" : jobToAdd
             }
         })
@@ -575,7 +583,6 @@
         sendRequest({
             "type" : "delete_job",
             "data" : {
-                "token" : SESSION_TOKEN,
                 "job_name" : jobToRemove
             }
         })
@@ -599,7 +606,7 @@
 
 
 
-{#if project}
+{#if project && error == ""}
     <button class="editing-button" on:click={toggleEditingMode}>
         {`Switch to ${editingMode ? "Normal" : "Editing"} Mode`}
     </button>
@@ -787,8 +794,11 @@
                                     widthName = "smallText" enforceNumbers = {true}/>
                                 <EditingColumn bind:groupData
                                     groupPk={groupPk}/>
-                                <TextColumn bind:groupData groupPk={groupPk}
-                                    colName = "comments" widthName = "comments"/>
+                                <TextColumn bind:dataSource={groupData} 
+                                    id={groupPk}
+                                    columnName="comments"
+                                    widthName="comments"
+                                    updateValueFunction={addGroupUpdate}/>
                                 
                                 {#if isFirstSideInGroup}
                                     <ComputeColumn
@@ -831,8 +841,11 @@
                             {#if !isAudio}
                                 <EditingColumn bind:groupData={groupData}
                                     groupPk = {groupPk}/>
-                                <TextColumn bind:groupData groupPk={groupPk}
-                                    colName="comments" widthName="comments"/>
+                                <TextColumn bind:dataSource={groupData} 
+                                    id={groupPk}
+                                    columnName="comments"
+                                    widthName="comments"
+                                    updateValueFunction={addGroupUpdate}/>
                                 <ComputeColumn
                                     projectId = {data['group_number']}
                                     groupPk = {groupPk}

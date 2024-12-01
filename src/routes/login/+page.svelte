@@ -6,7 +6,10 @@
     import { base } from '$app/paths'
 
     import { getCookieValue } from "$lib/scripts/helpers.js";
+    import { createLoginRequest, setLoginCookies } from "$lib/scripts/login.js";
 
+    const DEFAULT_PAGE = "/board";
+    
     onMount(async() => {
         $PageNameStore = "Login";
     });
@@ -20,7 +23,6 @@
     let previousPage = base;
 
     afterNavigate(({from}) => {
-        console.log(`You came from ${from?.url.pathname}`);
         previousPage = from?.url.pathname || previousPage;
     });
 
@@ -36,25 +38,16 @@
             return;
         }
         
+        // Reset error and success values
         error = "";
         success = "";
 
-        const request = {
-            method : "POST",
-            headers : {
-                "Content-Type" : "application/json"
-            },
-            body : JSON.stringify({
-                "email" : email,
-                "password" : password
-            })
-        }
+        let request = createLoginRequest(email, password);
 
         const response = await fetch(endpoint, request);
         
         let json = await response.json();
         
-        console.log(response.status);
         if(response.status != 200) {
             if("non_field_errors" in json && json["non_field_errors"] == "Invalid Details.") {
                 error = "Invalid username or password! Please try again.";
@@ -65,21 +58,15 @@
             return;
         }
 
-        let userId = json["user"]["id"];
-        let userEmail = json["user"]["email"];
-        let authToken = json["token"];
+        let successfulLogin = setLoginCookies(json);
 
-        let formattedAuthToken = `Token ${authToken}`
+        success = `Logged in as ${successfulLogin.userEmail}!`
+        
+        let pageToReturnTo = previousPage == "/login" || !previousPage ? 
+            DEFAULT_PAGE
+            : previousPage;
 
-        document.cookie = `MemoryWare_AuthToken=${formattedAuthToken}; max-age=${PUBLIC_AUTH_TOKEN_EXPIRATION_LENGTH}; path=/`;
-        document.cookie = `MemoryWare_UserEmail=${userEmail}; max-age=${PUBLIC_AUTH_TOKEN_EXPIRATION_LENGTH}; path=/`;
-        document.cookie = `MemoryWare_UserId=${userId}; max-age=${PUBLIC_AUTH_TOKEN_EXPIRATION_LENGTH}; path=/`;
-
-        success = `Logged in as ${userEmail}!`
- 
-        console.log(`You're boutta go to ${previousPage}`);
-
-        setTimeout(function() { goto(previousPage) }, 1000);
+        setTimeout(function() { goto(pageToReturnTo) }, 1000);
     }
 </script>
 

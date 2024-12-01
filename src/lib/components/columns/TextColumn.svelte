@@ -1,14 +1,15 @@
 <script>
-    import { getContext } from 'svelte';
     import { widthConsts } from '$lib/components/columns/widthConsts.js';
-    let addGroupUpdate = getContext('addGroupUpdate');
 
-    export let groupPk, groupData, colName, widthName;
+    export let id,
+            dataSource,
+            columnName,
+            widthName,
+            updateValueFunction;
     let width = widthConsts[widthName];
 
-    function onChange(val) {
-        addGroupUpdate(groupPk, colName, val);
-        groupData[colName] = val;
+    function updateValue(val) {
+        updateValueFunction(id, columnName, val)
     }
 </script>
 
@@ -17,15 +18,16 @@
     contenteditable="true"
     style="flex: {width} 0 {width}rem; max-width: {width}"
     spellcheck="false"
-    on:input={(e) => onChange(e.target.textContent)}
-    textContent={groupData[colName] ?? ""}
+    on:input={(e) => updateValue(e.target.textContent)}
+    textContent={dataSource[id][columnName] ?? ""}
 >
-    {groupData[colName] ?? ""}
+    {dataSource[id][columnName] ?? ""}
 </span>
 
 
 <style>
     span {
+        align-content: center;
         min-width: 0;
         background-color: var(--clr-primary-5);
         padding: 2.5px;

@@ -2,31 +2,32 @@
     import { PageNameStore, CurrentMainTab, ProjectWebsocket } from '$lib/scripts/mtd-store.js';
     import { PUBLIC_IP_HTTP_BACKEND, PUBLIC_IP_WS_BACKEND } from '$env/static/public';
     import { onMount } from 'svelte';
-    import { getBaseRequestHeader, getToken, startWebsocketConnection } from "$lib/scripts/helpers.js";
+    import { getBaseRequestHeader, startWebsocketConnection } from "$lib/scripts/helpers.js";
+    import { getToken, gotoLoginIfNotLoggedIn, UserId } from "$lib/scripts/login.js"; 
     import ListContainer from "$lib/components/ListContainer.svelte";
     import ListContainerLineBreak from "$lib/components/ListContainerLineBreak.svelte";
     import TempMessage from "$lib/components/TempMessage.svelte";
     import { handleReceivedUpdate } from "./boardMessages.js";
+    import TextColumn from '$lib/components/columns/TextColumn.svelte';
 
     import SortButton from "./components/SortButton.svelte";
 
     let board = {};
     let error = 0;
-    let tabs = ["In-Progress", "Finished"];
+    let tabs = ["Boulder", "WheatRidge", "Littleton", "LoneTree"];
+    CurrentMainTab.set("Boulder");
     let websocketMessageHandlers = {
-        "projects.update_project" : () => { alert("Updating project!!!"); },
+        "projects.update_project" : (message) => { handleUpdateProjectCommand(message) },
         "projects.add_project" : () => { alert("Adding project!!!"); },
         "projects.delete_project" : () => { alert("Deleting project!!!"); }
     };
-    CurrentMainTab.set("In-Progress");
 
-    
+
     function connectToWebsocket() {
         let token = getToken(false);
         startWebsocketConnection(`${PUBLIC_IP_WS_BACKEND}/ws/project/board/?token=${token}`);
 
         $ProjectWebsocket.onmessage = (event) => {
-            console.log("a");
             let event_json = JSON.parse(event.data);
             handleReceivedUpdate(event_json, websocketMessageHandlers);
         };
@@ -35,6 +36,10 @@
 
     onMount(async() => {
         PageNameStore.set("Project Board");
+
+        if(!gotoLoginIfNotLoggedIn()) {
+            return;
+        }
 
         connectToWebsocket();
 
@@ -56,15 +61,14 @@
                 error = `Error retrieving project board: Error ${response.status}!`;
             }
         }
-        filteredBoard = board;
         
         board = data;
     });
 
 
-    function compareNames(a, b) {
-        let aName = `${a['client_name_last']}, ${a['client_name_first']}`;
-        let bName = `${b['client_name_last']}, ${b['client_name_first']}`;
+    function compareNames([aId, aFields], [bId, bFields]) {
+        let aName = `${aFields['client_name_last']}, ${aFields['client_name_first']}`;
+        let bName = `${bFields['client_name_last']}, ${bFields['client_name_first']}`;
 
         if(aName < bName) {
             return -1;
@@ -74,25 +78,12 @@
             return 0;
         }
     }
-
-    
-    function compareLocations(a, b) {
-        if(a['location'] < b['location']) {
-            return -1;
-        } else if(a['location'] > b['location']) {
-            return 1;
-        } else {
-            return compareNames(a, b);
-        }
-    }
-
-
-    function compareDates(a, b, fieldName) {
+    function compareDates([aId, aFields], [bId, bFields], fieldName) {
         let aMonth, aDay, aYear;
         let bMonth, bDay, bYear;
 
-        [aMonth, aDay, aYear] = a[fieldName].split('_');
-        [bMonth, bDay, bYear] = b[fieldName].split('_');
+        [aMonth, aDay, aYear] = aFields[fieldName].split('_');
+        [bMonth, bDay, bYear] = bFields[fieldName].split('_');
 
         if(aYear < bYear)
             return -1;
@@ -107,15 +98,11 @@
         if(aDay > bDay)
             return 1;
         else
-            return compareNames(a, b);
+            return compareNames([aId, aFields], [bId, bFields]);
     }
-
-
     function compareDueDates(a, b) {
         return compareDates(a, b, "date_due_formatted");
     }
-
-
     function compareInDates(a, b) {
         return compareDates(a, b, "date_in_formatted");
     }
@@ -128,7 +115,7 @@
             "Lone Tree" : true,
             "Littleton" : true
         },
-        media: {
+        media : {
             "Slides" : true,
             "Prints" : true,
             "Negs" : true,
@@ -138,22 +125,32 @@
         },
         onlyHardDues : false
     }
-
-
-    function filterBoard(board, filters, tab) {
-        return board.filter((project) => {
-            let location = project['location'];
-            if(!filters.locations[location])
-                return false;
+    function filterBoard(board, filters, tabName) {
+        let ret = Object.entries(board).filter(([projectId, project]) => {
             
             if(filters.onlyHardDues && !project['is_hard_due'])
                 return false;
+            
+            let containsRelevantLocation = false;
+            let containsAnyLocationFilters = false;
+            if(!project['locations'].includes(tabName)) {
+                return false;
+            }
+            
+
+            /*for(const [location, shouldFilterFor] of Object.entries(filters.media)) {
+                containsAnyLocationFilters |= !shouldFilterFor;
+                if(shouldFilterFor && project['locations'].includes(location)) {
+                    containsRelevantLocation = true;
+                    break;
+                }
+            }*/
 
             let containsRelevantMedia = false;
             let containsAnyMediaFilters = false;
-            for(const [fMedia, fToFilter] of Object.entries(filters.media)) {
-                containsAnyMediaFilters |= !fToFilter;
-                if(fToFilter && project['media_types'].includes(fMedia)) {
+            for(const [mediaName, shouldFilterFor] of Object.entries(filters.media)) {
+                containsAnyMediaFilters |= !shouldFilterFor;
+                if(shouldFilterFor && project['media_types'].includes(mediaName)) {
                     containsRelevantMedia = true;
                     break;
                 }
@@ -162,24 +159,33 @@
             if(containsAnyMediaFilters && !containsRelevantMedia)
                 return false;
 
-            if(tab == "In-Progress" && project["is_complete"])
-                return false;
-
-            if(tab == "Finished" && !project["is_complete"])
-                return false;
-
             return true;
-        })
+        });
+        
+        return ret;
     }
 
 
-    function sortBoard(sortBy = "date_due_formatted", ascendingOrder = true) {
+    let sorter = "client_name";
+    let isAscending = true
+    function changeSorter(newSorter) {
+        isAscending = sorter == newSorter && isAscending ? false : true;
+        sorter = newSorter;
+        
+        console.log(isAscending);
+        console.log(sorter);
+    }
+    function sortBoard(board, sortBy = "date_due_formatted", ascendingOrder = true) {
         console.log(`Sorting by ${sortBy}, in ${ascendingOrder ? "ascending" : "descending"} order`);
-        console.log(filteredBoard);
+        
+        let filteredBoard = board;
+
         switch(sortBy) {
+            /*
             case("location"):
                 filteredBoard.sort(compareLocations);
                 break;
+            */
 
             case("client_name"):
                 filteredBoard.sort(compareNames)
@@ -190,9 +196,7 @@
                 break;
 
             case("date_due_formatted"):
-                console.log(filteredBoard);
                 filteredBoard.sort(compareDueDates);
-                console.log(filteredBoard);
                 break;
 
             case("date_in_formatted"):
@@ -204,38 +208,94 @@
                 return;
         }
         
-        /*if(ascendingOrder) {
-            filteredBoard = filteredBoard.reverse();
+        if(ascendingOrder) {
+            return filteredBoard.reverse();
         } else {
-            filteredBoard = filteredBoard;
-        }*/
-
-        filteredBoard = filteredBoard;
-        //filteredBoard = filteredBoard;
+            return filteredBoard;
+        }
     }
 
-    $: filteredBoard = board?.length > 0 ? filterBoard(board, filters, $CurrentMainTab) : {};
+
+    let editingMode = false;
+    function toggleEditingMode() {
+        editingMode = !editingMode;
+    }
+
+
+    let bufferedProjectUpdates = []
+    function addProjectUpdate(projectId, columnName, value) {
+        for(let i=0; i<bufferedProjectUpdates.length; i++) {
+            let bufferedProjectUpdate = bufferedProjectUpdates[i];
+
+            if(bufferedProjectUpdate["id"] == projectId && bufferedProjectUpdate["col"] == columnName) {
+                bufferedProjectUpdate["val"] = value;
+                return;
+            }
+        }
+
+        bufferedProjectUpdates.push({
+            "type" : "update_project",
+            "id" : projectId,
+            "col" : columnName,
+            "val" : value
+        });
+    }
+    function sendBufferedUpdates() {
+        if(bufferedProjectUpdates.length == 0)
+            return;
+        
+        bufferedProjectUpdates.forEach((update) => {
+            $ProjectWebsocket.send(JSON.stringify(update));
+        })
+
+        bufferedProjectUpdates.length = 0;
+    }
+    setInterval(sendBufferedUpdates, 500);
+
+
+    function updateProject(projectId, columnName, value) {
+        board[projectId][columnName] = value;
+
+        board = board;
+    }
+    function handleUpdateProjectCommand(message) {
+        console.log("Handling project update!");
+        console.log($UserId)
+        if($UserId == message["user_id"])
+            return;
+
+        let projectId = message["project_id"];
+        let columnName = message["col_name"];
+        let value = message["col_val"];
+
+        updateProject(projectId, columnName, value);
+    }
+
+    let boardDisplay = {};
 </script>
 
-
-<ListContainer minWidthRem=50 tabs={tabs}>
-    {#if board.length > 0}
+{#if Object.entries(board).length > 0}
+    <button class="editing-button" on:click={toggleEditingMode}>
+        {`Switch to ${editingMode ? "Normal" : "Editing"} Mode`}
+    </button>
+{/if}
+<ListContainer minWidthRem=50 tabs={Object.entries(board).length > 0 ? tabs : []}>
+    {#if Object.entries(board).length > 0}
         <div class="listing">
             <ol>
                 <div>Location</div>
-                <SortButton func={(ascendingOrder) => { sortBoard("location", ascendingOrder)}}/>
             </ol>
             <ol>
                 <div>Name</div>
-                <SortButton func={(ascendingOrder) => { sortBoard("client_name", ascendingOrder)}}/>
+                <SortButton func={(ascendingOrder) => { changeSorter("client_name")}}/>
             </ol>
             <ol>
                 <div>Received</div>
-                <SortButton func={(ascendingOrder) => { sortBoard("date_in_formatted", ascendingOrder)}}/>
+                <SortButton func={(ascendingOrder) => { changeSorter("date_in_formatted")}}/>
             </ol>
             <ol>
                 <div>Due</div>
-                <SortButton func={(ascendingOrder) => { sortBoard("date_due_formatted", ascendingOrder)}}/>
+                <SortButton func={(ascendingOrder) => { changeSorter("date_due_formatted")}}/>
             </ol>
             <ol>
                 <div>Media</div>
@@ -245,38 +305,54 @@
             </ol>
         </div>
         <ListContainerLineBreak />
-        {#each filteredBoard as projectListing, i}
-            <div class="listing">
-                <div class="listing-info">
-                    {projectListing['location']}
+        {boardDisplay = sortBoard(filterBoard(board, filters, $CurrentMainTab), sorter, isAscending)}
+        {#if boardDisplay.length > 0}
+            {#each boardDisplay as [projectId, projectListing], i}
+                <div class="listing">
+                    <ol class="media-container">
+                        {#each projectListing['locations'] as location}
+                            <li class="media"
+                                style="border: 2px solid var(--clr-{location.toLowerCase()}); background-color: var(--clr-{location.toLowerCase()}-1);">
+                                {location}
+                            </li>
+                        {/each}
+                    </ol>
+                    <div class="listing-info">
+                        <a href="/board/{projectId}">{projectListing.client_name_last}, {projectListing.client_name_first}</a>
+                    </div>
+                    <div class="listing-info">
+                        <p>
+                            {projectListing.date_in_formatted}
+                        </p>
+                    </div>
+                    <div class="listing-info">
+                        <p style="{projectListing.is_hard_due ? "color:red;font-weight:bold" : ""}">
+                            {projectListing.date_due_formatted}
+                        </p>
+                    </div>
+                    <ol class="media-container">
+                        {#each projectListing['media_types'] as mediaType}
+                            <li class="media"
+                                style="border: 2px solid var(--clr-{mediaType.toLowerCase()}); background-color: var(--clr-{mediaType.toLowerCase()}-1);">
+                                {mediaType}
+                            </li>
+                        {/each}
+                    </ol>     
+                    <TextColumn dataSource={boardDisplay}
+                        id={projectId}
+                        columnName="comments"
+                        widthName="boardComments"
+                        updateValueFunction={addProjectUpdate}/>
                 </div>
-                <div class="listing-info">
-                    <a href="/board/{projectListing['id']}">{projectListing.client_name_last}, {projectListing.client_name_first}</a>
-                </div>
-                <div class="listing-info">
-                    <p>
-                        {projectListing.date_in_formatted}
-                    </p>
-                </div>
-                <div class="listing-info">
-                    <p style="{projectListing.is_hard_due ? "color:red;font-weight:bold" : ""}">
-                        {projectListing.date_due_formatted}
-                    </p>
-                </div>
-                <ol class="media-container">
-                    {#each projectListing.media_types as mediaType}
-                        <li class="media"
-                            style="border: 2px solid var(--clr-{mediaType.toLowerCase()}); background-color: var(--clr-{mediaType.toLowerCase()}-1);">
-                            {mediaType}
-                        </li>
-                    {/each}
-                </ol>     
-                <div class="listing-info">{projectListing.comments}</div>
-            </div>
-            {#if i < filteredBoard.length - 1}
-                <ListContainerLineBreak dotted={true}/>
-            {/if}
-        {/each}
+                {#if i < boardDisplay.length - 1}
+                    <ListContainerLineBreak dotted={true}/>
+                {/if}
+            {/each}
+        {:else}
+            <TempMessage>
+                There's no projects in {$CurrentMainTab}!
+            </TempMessage>
+        {/if}
     {:else}
         <TempMessage>
             {error ? error : "Loading project board..."}
@@ -288,7 +364,7 @@
 <style>
     .listing {
         display: grid;
-        grid-template-columns: max(7rem, 14%) max(8rem,16%) max(7rem,10%) max(5rem,10%) max(13rem,26%) max(10rem,20%);
+        grid-template-columns: max(7rem, 14%) max(6rem,12%) max(7rem,14%) max(5rem,10%) max(8rem,16%) max(17rem,34%);
         padding: 10px 0px 10px 10px;
     }
     .media-container {
@@ -310,4 +386,15 @@
         display: flex;
         align-items: center;
     }
+    .editing-button {
+        position: absolute;
+        right: 20px;
+        top: 15px;
+        z-index: 5;
+        padding:5px;
+        background-color: var(--clr-primary-5-1);
+    }
+    .editing-button:hover {
+        background-color: var(--clr-primary-5-2);
+    }   
 </style>

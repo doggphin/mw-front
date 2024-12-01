@@ -144,25 +144,11 @@ export function getCookieValue(name) {
     for (const cookie of cookies) {
         const [key, value] = cookie.split('=');
         if (key === name) {
-            console.log(value);
             return value;
         }
     }
 
     return null; // Return null if the cookie is not found
-}
-
-
-export function getToken(includePrefix) {
-    let token = getCookieValue("MemoryWare_AuthToken")
-
-    if(token == null) {
-        return "";
-    }
-
-    return includePrefix ?
-        token
-        : token.split(' ')[1] ?? "";
 }
 
 
@@ -177,21 +163,8 @@ export function getBaseRequestHeader(method_type) {
 }
 
 
-export function getIsLoggedIn() {
-    let isLoggedIn = getCookieValue("MemoryWare_AuthToken") != null;
+export function closeWebsocketConnection() {
 
-    return isLoggedIn;
-}
-
-
-export function logOut() {
-    if(document == null) {
-        return;
-    }
-
-    document.cookie = "MemoryWare_AuthToken=; max-age=0; path=/";
-    document.cookie = "MemoryWare_UserEmail=; max-age=0; path=/";
-    document.cookie = "MemoryWare_UserId=; max-age=0; path=/";
 }
 
 
@@ -202,6 +175,4 @@ export function startWebsocketConnection(endpoint) {
     }
 
     ProjectWebsocket.set(new WebSocket(endpoint));
-
-    console.log("Connected!");
 }

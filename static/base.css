@@ -91,6 +91,15 @@ table {
 	--clr-audio-1: #c7e3ff;
 	--clr-other: #ff1493;
 
+	--clr-boulder: #e4be53;
+	--clr-boulder-1: #f0deac;
+	--clr-wheatridge: rgb(71, 146, 211);
+	--clr-wheatridge-1: rgb(138, 182, 221);
+	--clr-littleton: rgb(68, 196, 68);
+	--clr-littleton-1: rgb(175, 235, 175);
+	--clr-lonetree: #ce7444;
+	--clr-lonetree-1: #daaa90;
+
 	--border-radius-1: 15px;
 
 	--min-desktop-width: 768px;

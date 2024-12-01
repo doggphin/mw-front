@@ -1,14 +1,12 @@
 <script>
     import { PageNameStore } from '$lib/scripts/mtd-store.js';
     import { page } from '$app/stores';
-    import { logOut, getIsLoggedIn } from '$lib/scripts/helpers.js';
-    import { goto } from '$app/navigation';
+    import { logOut, getIsLoggedIn, tryLoadUserStoresWithCookies, gotoLoginIfNotLoggedIn } from '$lib/scripts/login.js';
     import { onMount } from 'svelte';
+    import { goto } from "$app/navigation";
     import { Modals, closeModal } from 'svelte-modals';
 
-    import ListContainerLineBreak from '$lib/components/ListContainerLineBreak.svelte'
     import NavButton from "$lib/components/NavButton.svelte";
-    import FolderImage from '$lib/assets/folder_open_24dp_FILL0_wght400_GRAD0_opsz24.svg';
     import ListImage from '$lib/assets/view_list_24dp_FILL0_wght400_GRAD0_opsz24.svg';
     import AddImage from '$lib/assets/add_circle_24dp_FILL0_wght400_GRAD0_opsz24.svg';
     import DnsImage from '$lib/assets/dns_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg';
@@ -21,10 +19,21 @@
     function onPageChange() {
         console.log('Page changed:', $page.url.pathname);
         isLoggedIn = getIsLoggedIn();
+
+        if(!isLoggedIn) {
+            goto("/login");
+        }
     }
+
 
     let unsubscribe;
     onMount(() => {
+        console.log("asdf");
+        if(gotoLoginIfNotLoggedIn()) {
+            tryLoadUserStoresWithCookies();
+        }
+
+
         unsubscribe = page.subscribe(($page) => {
             onPageChange();
         });

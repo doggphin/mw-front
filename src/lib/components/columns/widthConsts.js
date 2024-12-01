@@ -9,7 +9,9 @@ export let widthConsts = {
     editing: 4,
     comments: 7,
     //
-    compute: 1
+    compute: 1,
+
+    boardText: 10
 }
 
 // Definitions of names and visual widths of columns for job types
