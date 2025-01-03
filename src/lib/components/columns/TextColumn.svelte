@@ -9,8 +9,10 @@
     let width = widthConsts[widthName];
 
     function updateValue(val) {
-        updateValueFunction(id, columnName, val)
+        updateValueFunction(id, columnName, val);
     }
+
+    $: console.log(dataSource);
 </script>
 
 
@@ -19,9 +21,9 @@
     style="flex: {width} 0 {width}rem; max-width: {width}"
     spellcheck="false"
     on:input={(e) => updateValue(e.target.textContent)}
-    textContent={dataSource[id][columnName] ?? ""}
+    textContent={dataSource[columnName] ?? ""}
 >
-    {dataSource[id][columnName] ?? ""}
+    {dataSource[columnName] ?? ""}
 </span>
 
 

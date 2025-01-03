@@ -86,6 +86,10 @@
 </Modals>
 
 <style>
+    :root {
+        --header-height: 60px;
+    }
+
     .login-container {
         align-content: center;
         display: flex;
@@ -189,11 +193,10 @@
             width: 100%;
             position: fixed;
             background-color: white;
-            height: 60px;
+            height: var(--header-height);
             display: flex;
             container-type: inline-size;
             width: 100%;
-            border-bottom: calc(var(--gap-listcontainer) / 2);
             border-bottom: var(--border-size-med) solid var(--clr-primary-5-1);
             z-index: 10;
         }
@@ -219,7 +222,7 @@
         }
         .main-body {
             position: relative;
-            top: 75px;
+            top: var(--header-height);
         }
     }
 

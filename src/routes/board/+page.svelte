@@ -257,9 +257,9 @@
         board[projectId][columnName] = value;
 
         board = board;
+        console.log(`Updated ${columnName} to ${value}`);
     }
     function handleUpdateProjectCommand(message) {
-        console.log("Handling project update!");
         console.log($UserId)
         if($UserId == message["user_id"])
             return;
@@ -272,7 +272,10 @@
     }
 
     let boardDisplay = {};
+    $: boardDisplay = board ? sortBoard(filterBoard(board, filters, $CurrentMainTab), sorter, isAscending) : {};
 </script>
+
+
 
 {#if Object.entries(board).length > 0}
     <button class="editing-button" on:click={toggleEditingMode}>
@@ -305,9 +308,8 @@
             </ol>
         </div>
         <ListContainerLineBreak />
-        {boardDisplay = sortBoard(filterBoard(board, filters, $CurrentMainTab), sorter, isAscending)}
         {#if boardDisplay.length > 0}
-            {#each boardDisplay as [projectId, projectListing], i}
+            {#each boardDisplay as [projectId, projectListing], i (projectId)}
                 <div class="listing">
                     <ol class="media-container">
                         {#each projectListing['locations'] as location}
@@ -338,7 +340,7 @@
                             </li>
                         {/each}
                     </ol>     
-                    <TextColumn dataSource={boardDisplay}
+                    <TextColumn dataSource={projectListing}
                         id={projectId}
                         columnName="comments"
                         widthName="boardComments"
