@@ -176,3 +176,11 @@ export function startWebsocketConnection(endpoint) {
 
     ProjectWebsocket.set(new WebSocket(endpoint));
 }
+
+
+export function openNewTab(url) {
+    window.open(url, "_blank").focus()
+}
+
+
+export const delay = ms => new Promise(res => setTimeout(res, ms));

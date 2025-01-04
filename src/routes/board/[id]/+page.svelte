@@ -609,7 +609,7 @@
 
     $: $CurrentMainTab, updateDomChangingVariable = updateDomChangingVariable + 1;
 
-    let selectedNavbarChoice = "project-info";
+    let selectedNavbarChoice = "jobs";
     function setNavbarChoice(choice) {
         selectedNavbarChoice = choice;
         console.log(selectedNavbarChoice);
@@ -899,7 +899,7 @@
         {/if}
     </ListContainer>
 {:else if selectedNavbarChoice=="project-info"}
-    <div class="container">
+    <div class="base-container">
         <ol class="project-info-choices">
             <ProjectInfoDivision name = "Client">
                 <div class="indented">
@@ -933,7 +933,9 @@
         </ol>
     </div>
 {:else}
-    UNUSED
+    <div class="base-container">
+        UNUSED
+    </div>
 {/if}
 
 
@@ -944,12 +946,6 @@
     }
     .project-info-choices {
         display: block;
-    }
-    .container {
-        border: var(--border-size-med) solid var(--clr-primary-5-1);
-        background-color: white;
-        margin: var(--gap-listcontainer);
-        border-radius: calc(var(--gap-listcontainer) / 2); 
     }
     .navbar {
         width: 100%;
@@ -971,7 +967,8 @@
         align-items: center;
         padding-left: 10px;
         margin: 0;
-        border-radius: 5px;
+        border-radius: 0 0 10px 10px;
+        z-index: 1001;
     }
     .navbar-choice:last-child {
         border-right: none;  /* Remove the border on the last item */
@@ -980,13 +977,13 @@
     .editing-button {
         position: absolute;
         right: 20px;
-        top: 15px;
+        top: 40px;
         z-index: 5;
         padding:5px;
         background-color: var(--clr-primary-5-1);
     }
     .editing-button:hover {
-        background-color: var(--clr-primary-5-2);
+        background-color: white;
     }
     ol {
         display: flex;

@@ -28,7 +28,6 @@
 
     let unsubscribe;
     onMount(() => {
-        console.log("asdf");
         if(gotoLoginIfNotLoggedIn()) {
             tryLoadUserStoresWithCookies();
         }
@@ -53,7 +52,7 @@
         <NavButton text="Project Board" iconSrc={ListImage} link="/board/"/>
         <NavButton text="Servers" iconSrc={DnsImage} link="/servers/"/>
         <NavButton text="New Project" iconSrc={AddImage} link="/newproject/"/>
-        <NavButton text="(Test) Xero" iconSrc={HubImage} link="/clients/"/>
+        <NavButton text="Integrations" iconSrc={HubImage} link="/integrations/"/>
     </nav>
     <div class="content">
         <div class="header">

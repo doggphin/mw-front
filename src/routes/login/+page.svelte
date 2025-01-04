@@ -4,7 +4,6 @@
     import { onMount } from 'svelte';
     import { goto, afterNavigate } from '$app/navigation';
     import { base } from '$app/paths'
-
     import { getCookieValue } from "$lib/scripts/helpers.js";
     import { createLoginRequest, setLoginCookies } from "$lib/scripts/login.js";
 

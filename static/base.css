@@ -152,3 +152,10 @@ button:hover {
 	background-color: var(--clr-primary-5-1);
 	cursor: pointer;
 }
+
+.base-container {
+	border: var(--border-size-med) solid var(--clr-primary-5-1);
+	background-color: white;
+	margin: var(--gap-listcontainer);
+	border-radius: calc(var(--gap-listcontainer) / 2); 
+}
