@@ -968,7 +968,7 @@
         padding-left: 10px;
         margin: 0;
         border-radius: 0 0 10px 10px;
-        z-index: 1001;
+        z-index: 90;
     }
     .navbar-choice:last-child {
         border-right: none;  /* Remove the border on the last item */
