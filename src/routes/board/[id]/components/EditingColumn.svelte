@@ -3,7 +3,7 @@
     import { openModal } from 'svelte-modals';
     import { widthConsts } from '$lib/components/columns/widthConsts.js';
     import { secondsToFormattedTime } from "$lib/scripts/helpers.js";
-    import { editingTypesToLabel, editingTypes } from "$lib/scripts/editing.js"
+    import { editingTypes } from "$lib/scripts/editing.js"
     import EditingModal from "./EditingModal.svelte";
     import AddIcon from "$lib/assets/add_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg";
     let addEditingTagUpdateRequest = getContext('addEditingTagUpdateRequest');
@@ -36,7 +36,7 @@
         <select class="editing-type"
         on:change={(val) => addEditingTagUpdateRequest(groupPk, editingTag['id'], val.target.value, null)}>
             {#each editingTypes as editingType}
-                {#if editingType === editingTypesToLabel[editingTag["editing_type"]]}
+                {#if editingType === editingTag["editing_type"]}
                     <option value={editingType} selected>{editingType}</option>
                 {:else}
                     <option value={editingType}>{editingType}</option>

@@ -1,7 +1,6 @@
 <script>
   import { getContext } from 'svelte';
   import { closeModal } from 'svelte-modals';
-  import { editingTypesToLabel } from "$lib/scripts/editing.js";
   import { conformStringToNumber, secondsToHoursMinutesSeconds, hoursMinutesSecondsToSeconds } from "$lib/scripts/helpers.js";
   import RestartIcon from "$lib/assets/replay_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg";
   import StartIcon from "$lib/assets/play_arrow_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg";
@@ -116,7 +115,7 @@
   <div role="dialog" class="modal">
     <div class="contents">
 
-      <h2>{`Editing time for ${editingTypesToLabel[editingTag["editing_type"]]} of Group ${groupData['group_number']}`}</h2>
+      <h2>{`Editing time for ${editingTag["editing_type"]} of Group ${groupData['group_number']}`}</h2>
 
       <div style="margin: 125px 80px;"> a clock should go here :)</div>
       <div class="time-inputs-container">

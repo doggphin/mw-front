@@ -3,7 +3,7 @@
     import { openNewTab, getBaseRequestHeader } from '$lib/scripts/helpers.js';
     import { onMount } from 'svelte';
     import { gotoLoginIfNotLoggedIn } from "$lib/scripts/login.js";
-    import { PUBLIC_IP_HTTP_BACKEND } from '$env/static/public';
+    import { PUBLIC_IP_HTTP_BACKEND, PUBLIC_XERO_FRONTEND_URL } from '$env/static/public';
 
     onMount( async () => {
         /*
@@ -35,7 +35,7 @@
 
 <SetNavName name="External Integrations"/>
 <div class="base-container">
-    <button on:click={ () => openNewTab("https://go.xero.com/app/!f5B!Y/dashboard")}>
+    <button on:click={ () => openNewTab(`${PUBLIC_XERO_FRONTEND_URL}/dashboard`)}>
         <h3>Xero Page</h3>
     </button>
     <button on:click={ () => startManualAuth() }>

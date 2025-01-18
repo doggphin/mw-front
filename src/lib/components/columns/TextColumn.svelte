@@ -11,8 +11,6 @@
     function updateValue(val) {
         updateValueFunction(id, columnName, val);
     }
-
-    $: console.log(dataSource);
 </script>
 
 

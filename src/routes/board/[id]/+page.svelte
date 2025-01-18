@@ -4,11 +4,10 @@
     import { getRandom, characterComesBefore, getBaseRequestHeader, startWebsocketConnection } from '$lib/scripts/helpers.js';
     import { UserId, getToken } from "$lib/scripts/login.js";
     import { handleUpdateEditingTag, addTempEditingTag, removeEditingTag } from "$lib/scripts/project.js";
-    import { PUBLIC_IP_HTTP_BACKEND, PUBLIC_IP_WS_BACKEND } from '$env/static/public';
+    import { PUBLIC_IP_HTTP_BACKEND, PUBLIC_IP_WS_BACKEND, PUBLIC_XERO_FRONTEND_URL } from '$env/static/public';
     import { widths, widthConsts } from '$lib/components/columns/widthConsts.js';
     import { setContext, onMount, onDestroy } from 'svelte';
     import { getKeyByValue } from "$lib/scripts/helpers.js";
-    import { editingTypesToLabel } from "$lib/scripts/editing.js";
     import { videoTypes } from "$lib/scripts/video.js";
     import { dataTypes } from "$lib/scripts/data.js";``
     import { audioTypes } from "$lib/scripts/audio.js";
@@ -299,10 +298,8 @@
             "update_type" : "modify",
             "id" : tagId
         }
-        // Make sure to convert back to database entry naming style ("Other" -> "NA")
         if(editingType !== null) {
-            let dbEntryEditingType = getKeyByValue(editingTypesToLabel, editingType);
-            val["editing_type"] = dbEntryEditingType;
+            val["editing_type"] = editingType;
         }
         if(time !== null) {
             val["time"] = time;
@@ -382,7 +379,7 @@
         let userId = msg['user_id'];
         let jobName = msg['job_name'];
 
-        if(userId === $UserId && colName != "editing_tags") {
+        if(userId == $UserId && colName != "editing_tags") {
             return;
         }
 
@@ -402,8 +399,6 @@
                     group[colName] = val;
                     break;
             }
-
-            console.log("updated");
             
             updateDomChangingVariable += 1;
             group = group;
@@ -502,15 +497,12 @@
     };
     $ProjectWebsocket.onmessage = (event) => {
         const event_json = JSON.parse(event.data);
-        console.log(event_json);
         const msg = event_json['message'];
-        console.log(msg);
         const packet_type = event_json['type'];
 
         switch(event_json['type']) {
 
             case "projects.update_group":
-                console.log("Received!");
                 handleReceiveGroupUpdate(msg);
                 break;
             
@@ -609,25 +601,40 @@
 
     $: $CurrentMainTab, updateDomChangingVariable = updateDomChangingVariable + 1;
 
-    let selectedNavbarChoice = "jobs";
+    let selectedNavbarChoice = "media";
     function setNavbarChoice(choice) {
         selectedNavbarChoice = choice;
         console.log(selectedNavbarChoice);
         selectedNavbarChoice = selectedNavbarChoice;
     }
+    
 
+    async function exportInvoice() {
+        const endpoint = `${PUBLIC_IP_HTTP_BACKEND}/xero/export_invoice/${data.id}/`;
+        const request = getBaseRequestHeader("POST");
+        const response = await fetch(endpoint, request);
+        const jsonResponse = await response.json()
+
+        alert(`${response.status} : ${jsonResponse}`);
+    }
 </script>
 
 
 
 <div class="navbar">
     <ol class="navbar-choices">
-        <button on:click={ () => setNavbarChoice("jobs") } class="navbar-choice" style="background-color: {selectedNavbarChoice == "jobs" ? "white" : "var(--clr-primary-5-1)"};">Jobs</button>
-        <button on:click={ () => setNavbarChoice("project-info") } class="navbar-choice" style="background-color: {selectedNavbarChoice == "project-info" ? "white" : "var(--clr-primary-5-1)"};">Project Info</button>
-        <button on:click={ () => setNavbarChoice("client-info") } class="navbar-choice" style="background-color: {selectedNavbarChoice == "client-info" ? "white" : "var(--clr-primary-5-1)"};">UNUSED</button>
+        <button on:click={ () => setNavbarChoice("media") } class="navbar-choice" style="background-color: {selectedNavbarChoice == "media" ? "white" : "var(--clr-primary-5-1)"};">Media</button>
+        <button on:click={ () => setNavbarChoice("info") } class="navbar-choice" style="background-color: {selectedNavbarChoice == "info" ? "white" : "var(--clr-primary-5-1)"};">Info</button>
+        <button on:click={ () => setNavbarChoice("actions") } class="navbar-choice" style="background-color: {selectedNavbarChoice == "actions" ? "white" : "var(--clr-primary-5-1)"};">Actions</button>
     </ol>
 </div>
-{#if selectedNavbarChoice=="jobs"}
+{#if selectedNavbarChoice=="actions"}
+    <div class="base-container">
+        <button on:click={exportInvoice}>
+            Export Invoice
+        </button>
+    </div>
+{:else if selectedNavbarChoice=="media"}
     {#if project && error == ""}
         <button class="editing-button" on:click={toggleEditingMode}>
             {`Switch to ${editingMode ? "Normal" : "Editing"} Mode`}
@@ -898,12 +905,14 @@
             </TempMessage>
         {/if}
     </ListContainer>
-{:else if selectedNavbarChoice=="project-info"}
+{:else if selectedNavbarChoice=="info"}
     <div class="base-container">
         <ol class="project-info-choices">
             <ProjectInfoDivision name = "Client">
                 <div class="indented">
-                    {"<client goes here>"}
+                    <a href={`${PUBLIC_XERO_FRONTEND_URL}/contacts/contact/${project.client_xero_id}/details`}>
+                        {project.client_name_last}, {project.client_name_first}
+                    </a>
                 </div>
             </ProjectInfoDivision>
             <ProjectInfoDivision name = "Intake">
@@ -914,8 +923,8 @@
             </ProjectInfoDivision>
             <ProjectInfoDivision name = "Due">
                 <div class="indented">
-                    <li>Due by: </li>
-                    <li>Is hard due: </li>
+                    <li> Received: {project.date_in} </li>
+                    <li style={project.is_hard_due ? "color: red;" : ""}> Due by: {project.date_due} </li>
                 </div>
             </ProjectInfoDivision>
             <ProjectInfoDivision name = "Output(s)">
