@@ -58,14 +58,21 @@ table {
 	--clr-primary-5-1: #D5D5D7;
 	--clr-primary-5-2: #B6B6B9;
 
-	--clr-primary-good: #a9deac;
+	--size-4: 4px;
+	--size-8: 8px;
+	--size-16: 16px;
+	--size-32: 32px;
+	--size-48: 48px;
+	--size-64: 64px;
+	--size-128: 128px;
+	/* --clr-primary-good: #a9deac;
 	--clr-primary-good-1: #32a438;
 	--clr-primary-thinking: #a9b5de;
 	--clr-primary-thinking-1: #294cc0;
 	--clr-primary-bad: #dea9ad;
 	--clr-primary-bad-1: #b54b54;
 	--clr-primary-warning: #eaeeaa;
-	--clr-primary-warning-1: #dbe12c;
+	--clr-primary-warning-1: #dbe12c; */
 
 	--gap-small: 20px;
 	--gap-listcontainer: 20px;

@@ -1,26 +1,58 @@
-<script lang="ts">
+<script>
     import { closeModal } from 'svelte-modals';
-    import { PUBLIC_IP_WS_BACKEND } from '$env/static/public';
+    import { PUBLIC_IP_HTTP_BACKEND } from '$env/static/public';
+    import { getBaseRequestHeader } from '$lib/scripts/helpers.js';
 
-    export let isOpen : boolean;
+    export let isOpen;
+    export let searchReasonText;
+    export let returnContact;
 
-    let firstName : string;
-    let lastName : string;
-    let emailAddress : string;
+    let firstName;
+    let lastName;
+    let emailAddress;
 
-    function searchForMatchingUsers(formattedName : string, emailAddress : string) {
+    let error = "";
+    let contacts = {};
 
+    async function searchForMatchingUsers(formattedName, emailAddress) {
+        const endpoint = `${PUBLIC_IP_HTTP_BACKEND}/xero/get_clients_by_criteria/${formattedName ?? " "}/${emailAddress ?? " "}/`
+        let request = getBaseRequestHeader("GET");
+
+        const response = await fetch(endpoint, request);
+        const responseBody = await response.json()
+
+        if(response.status != 200) {
+            error = `Error: ${responseBody}`;
+            return;
+        }
+
+        contacts = responseBody;
     }
 
-    function confirmUser(index : number) {
 
+    function confirmUser(index) {
+        returnContact = 
+        closeModal();
     }
 </script>
 
 
 {#if isOpen}
     <div role="dialog" class="modal">
-        Hello!
+        <div>
+            {`Select a user${searchReasonText ? ` ${searchReasonText}` : ""}...`}
+        </div>
+        <ul>
+        {#each contacts as contact}
+            <li>
+                <button on:click={confirmUser()}>
+                    {contact["last_name"]}, {contact["first_name"]} --
+                    {contact["phone_number"]} --
+                    {contact["email"]}
+                </button>
+            </li>
+        {/each}
+        </ul>
     </div>
 {/if}
 

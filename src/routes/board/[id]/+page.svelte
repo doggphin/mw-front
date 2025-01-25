@@ -630,7 +630,7 @@
 </div>
 {#if selectedNavbarChoice=="actions"}
     <div class="base-container">
-        <button on:click={exportInvoice}>
+        <button on:click={exportInvoice} style="padding: 20px;">
             Export Invoice
         </button>
     </div>
